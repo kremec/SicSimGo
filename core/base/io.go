@@ -1,4 +1,4 @@
-package core
+package base
 
 import (
 	"bufio"
@@ -6,8 +6,14 @@ import (
 	"os"
 )
 
+/*
+DEFINITIONS
+*/
 type Device byte
 
+/*
+OPERATIONS
+*/
 func Test() bool {
 	return true
 }

@@ -1,19 +1,32 @@
-package core
+package base
 
 import (
 	"fmt"
 	"sicsimgo/core/units"
 )
 
+/*
+DEFINITIONS
+*/
+type Memory struct {
+	Data []byte
+}
+
 const (
 	MEMORY_SIZE uint32 = 0x100000
 	MAX_ADDRESS uint32 = 0xFFFFF
 )
 
-type Memory struct {
-	Data []byte
+/*
+IMPLEMENTATION
+*/
+var memory Memory = Memory{
+	Data: make([]byte, MEMORY_SIZE),
 }
 
+/*
+TRANSFORMATIONS
+*/
 func ToAddress(val uint32) units.Int24 {
 
 	if val > MAX_ADDRESS {
@@ -31,6 +44,9 @@ func toAddress(val units.Int24) uint32 {
 	return val.ToUint32()
 }
 
+/*
+OPERATIONS
+*/
 func GetByte(addressBytes units.Int24) byte {
 	address := toAddress(addressBytes)
 
@@ -84,6 +100,13 @@ func SetFloat(addressBytes units.Int24, value units.Float48) {
 	memory.Data[address+5] = value[5]
 }
 
+func ResetMemory() {
+	memory.Data = make([]byte, MEMORY_SIZE)
+}
+
+/*
+STRINGS
+*/
 func StringAddress(addressBytes units.Int24) string {
 	address := toAddress(addressBytes)
 

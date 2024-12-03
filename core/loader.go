@@ -1,4 +1,4 @@
-package loader
+package core
 
 import (
 	"bufio"
@@ -7,13 +7,21 @@ import (
 	"strconv"
 	"strings"
 
-	"sicsimgo/core"
+	"sicsimgo/core/base"
 	"sicsimgo/core/units"
 	"sicsimgo/internal"
 
 	"github.com/sqweek/dialog"
 )
 
+/*
+DEBUG
+*/
+var debugLoadProgram bool = false
+
+/*
+OPERATIONS
+*/
 func OpenObjectFile() string {
 	filename, err := dialog.File().Filter("Object files", "obj").Title("Select object file").Load()
 	if err != nil {
@@ -28,8 +36,6 @@ func OpenObjectFile() string {
 
 	return LoadProgram(file)
 }
-
-var debugLoadProgram bool = false
 
 func LoadProgram(file *os.File) string {
 	var programName string
@@ -58,25 +64,25 @@ func LoadProgram(file *os.File) string {
 			// Memory
 			idx := units.Int24{}
 			for i := 0; i < len(code); i++ {
-				core.SetByte(codeAddress.Add(idx.Add(codeOffset)), code[i])
+				base.SetByte(codeAddress.Add(idx.Add(codeOffset)), code[i])
 				idx = idx.Add(units.Int24{0x00, 0x00, 0x01})
 			}
 
 			// Dissasembly
-			instructions := GetInstructionsFromTextRecord(codeAddress, code)
+			instructions := GetDisassemblyInstructionsFromTextRecord(codeAddress, code)
 			for _, instruction := range instructions {
 				if debugLoadProgram {
 					fmt.Printf("    Address: %s, Format: %s, Bytes: % X, Opcode: %s, Operand: %s\n", instruction.InstructionAddress.StringHex(), instruction.Instruction.Format.String(), instruction.Instruction.Bytes, instruction.Instruction.Opcode.String(), instruction.Operand.StringHex())
 				}
 			}
-			Instructions = append(Instructions, instructions...)
+			Disassembly = append(Disassembly, instructions...)
 		} else if record[0] == 'E' {
 			endAddress := GetEndRecord(record)
 			if debugLoadProgram {
 				fmt.Printf("  End: %s\n", endAddress.StringHex())
 			}
 
-			core.SetRegisterPC(endAddress.Add(codeOffset))
+			base.SetRegisterPC(endAddress.Add(codeOffset))
 		}
 	}
 

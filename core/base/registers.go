@@ -1,10 +1,24 @@
-package core
+package base
 
 import (
 	"sicsimgo/core/units"
 )
 
+/*
+DEFINITIONS
+*/
 type RegisterId uint8
+type Registers struct {
+	A  units.Int24
+	X  units.Int24
+	L  units.Int24
+	B  units.Int24
+	S  units.Int24
+	T  units.Int24
+	F  units.Float48
+	PC units.Int24
+	SW units.Int24 // 0x0, 0x40 in 0x80 represent "less than", "equal to" and "greater than" respectively
+}
 
 const (
 	RegisterAId  RegisterId = 0
@@ -18,42 +32,24 @@ const (
 	RegisterSWId RegisterId = 9
 )
 
-func (registerId RegisterId) String() string {
-	switch registerId {
-	case RegisterAId:
-		return "A"
-	case RegisterXId:
-		return "X"
-	case RegisterLId:
-		return "L"
-	case RegisterBId:
-		return "B"
-	case RegisterSID:
-		return "S"
-	case RegisterTId:
-		return "T"
-	case RegisterFId:
-		return "F"
-	case RegisterPCId:
-		return "PC"
-	case RegisterSWId:
-		return "SW"
-	}
-	return "Not implemented"
+/*
+IMPLEMENTATION
+*/
+var registers Registers = Registers{
+	A:  units.Int24{},
+	X:  units.Int24{},
+	L:  units.Int24{},
+	B:  units.Int24{},
+	S:  units.Int24{},
+	T:  units.Int24{},
+	F:  units.Float48{},
+	PC: units.Int24{},
+	SW: units.Int24{},
 }
 
-type Registers struct {
-	A  units.Int24
-	X  units.Int24
-	L  units.Int24
-	B  units.Int24
-	S  units.Int24
-	T  units.Int24
-	F  units.Float48
-	PC units.Int24
-	SW units.Int24 // 0x0, 0x40 in 0x80 predstavljajo rezultate »manjše«, »enako« in »večje«
-}
-
+/*
+OPERATIONS
+*/
 func GetRegisterA() units.Int24 {
 	return registers.A
 }
@@ -117,7 +113,7 @@ func SetRegisterSW(value units.Int24) {
 	registers.SW = value
 }
 
-func GetRegister(registerId RegisterId) (units.Int24, error) {
+func (registerId RegisterId) GetRegister() (units.Int24, error) {
 	switch registerId {
 	case RegisterAId:
 		return registers.A, nil
@@ -139,9 +135,9 @@ func GetRegister(registerId RegisterId) (units.Int24, error) {
 		return registers.SW, nil
 	}
 
-	return units.Int24{}, InvalidRegister(registerId)
+	return units.Int24{}, ErrInvalidRegister(registerId)
 }
-func SetRegister(registerId RegisterId, value units.Int24) error {
+func (registerId RegisterId) SetRegister(value units.Int24) error {
 	switch registerId {
 	case RegisterAId:
 		registers.A = value
@@ -162,7 +158,47 @@ func SetRegister(registerId RegisterId, value units.Int24) error {
 	case RegisterSWId:
 		registers.SW = value
 	default:
-		return InvalidRegister(registerId)
+		return ErrInvalidRegister(registerId)
 	}
 	return nil
+}
+
+func ResetRegisters() {
+	resetValue := units.Int24{}
+	registers.A = resetValue
+	registers.X = resetValue
+	registers.L = resetValue
+	registers.B = resetValue
+	registers.S = resetValue
+	registers.T = resetValue
+	registers.F = units.Float48{}
+	registers.PC = resetValue
+	registers.SW = resetValue
+}
+
+/*
+STRINGS
+*/
+func (registerId RegisterId) String() string {
+	switch registerId {
+	case RegisterAId:
+		return "A"
+	case RegisterXId:
+		return "X"
+	case RegisterLId:
+		return "L"
+	case RegisterBId:
+		return "B"
+	case RegisterSID:
+		return "S"
+	case RegisterTId:
+		return "T"
+	case RegisterFId:
+		return "F"
+	case RegisterPCId:
+		return "PC"
+	case RegisterSWId:
+		return "SW"
+	}
+	return "Not implemented"
 }

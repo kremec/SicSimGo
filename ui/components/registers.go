@@ -1,19 +1,14 @@
 package components
 
 import (
-	"sicsimgo/core"
+	"sicsimgo/core/base"
 
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 )
 
-type (
-	C = layout.Context
-	D = layout.Dimensions
-)
-
-func DrawRegister(gtx layout.Context, theme *material.Theme, name string, value string) layout.Dimensions {
+func DrawRegister(gtx C, theme *material.Theme, name string, value string) D {
 	registerMargins := layout.Inset{
 		Top:    unit.Dp(0),
 		Bottom: unit.Dp(0),
@@ -51,29 +46,13 @@ func Registers(gtx C, theme *material.Theme) D {
 				Spacing: layout.SpaceAround,
 			}.Layout(gtx,
 				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "A", core.GetRegisterA().StringHex())
+					return DrawRegister(gtx, theme, "A", base.GetRegisterA().StringHex())
 				}),
 				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "X", core.GetRegisterX().StringHex())
+					return DrawRegister(gtx, theme, "X", base.GetRegisterX().StringHex())
 				}),
 				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "L", core.GetRegisterX().StringHex())
-				}),
-			)
-		}),
-		layout.Rigid(func(gtx C) D {
-			return layout.Flex{
-				Axis:    layout.Horizontal,
-				Spacing: layout.SpaceAround,
-			}.Layout(gtx,
-				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "B", core.GetRegisterB().StringHex())
-				}),
-				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "S", core.GetRegisterS().StringHex())
-				}),
-				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "T", core.GetRegisterT().StringHex())
+					return DrawRegister(gtx, theme, "L", base.GetRegisterX().StringHex())
 				}),
 			)
 		}),
@@ -83,7 +62,23 @@ func Registers(gtx C, theme *material.Theme) D {
 				Spacing: layout.SpaceAround,
 			}.Layout(gtx,
 				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "F", core.GetRegisterF().StringHex())
+					return DrawRegister(gtx, theme, "B", base.GetRegisterB().StringHex())
+				}),
+				layout.Rigid(func(gtx C) D {
+					return DrawRegister(gtx, theme, "S", base.GetRegisterS().StringHex())
+				}),
+				layout.Rigid(func(gtx C) D {
+					return DrawRegister(gtx, theme, "T", base.GetRegisterT().StringHex())
+				}),
+			)
+		}),
+		layout.Rigid(func(gtx C) D {
+			return layout.Flex{
+				Axis:    layout.Horizontal,
+				Spacing: layout.SpaceAround,
+			}.Layout(gtx,
+				layout.Rigid(func(gtx C) D {
+					return DrawRegister(gtx, theme, "F", base.GetRegisterF().StringHex())
 				}),
 			)
 		}),
@@ -96,10 +91,10 @@ func Registers(gtx C, theme *material.Theme) D {
 				Spacing: layout.SpaceAround,
 			}.Layout(gtx,
 				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "PC", core.GetRegisterPC().StringHex())
+					return DrawRegister(gtx, theme, "PC", base.GetRegisterPC().StringHex())
 				}),
 				layout.Rigid(func(gtx C) D {
-					return DrawRegister(gtx, theme, "SW", core.GetRegisterSW().StringHex())
+					return DrawRegister(gtx, theme, "SW", base.GetRegisterSW().StringHex())
 				}),
 			)
 		}),

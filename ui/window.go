@@ -3,8 +3,6 @@ package ui
 import (
 	_ "embed"
 	"sicsimgo/core"
-	"sicsimgo/core/loader"
-	"sicsimgo/core/proc"
 	"sicsimgo/internal"
 	"sicsimgo/ui/components"
 	"sicsimgo/ui/events"
@@ -61,7 +59,7 @@ func DrawWindow(w *app.Window) error {
 		List: layout.List{Axis: layout.Vertical},
 	}
 
-	proc.InitProcState()
+	core.InitProcState()
 
 	for {
 		switch e := w.Event().(type) {
@@ -73,30 +71,30 @@ func DrawWindow(w *app.Window) error {
 			events.HandleGlobalEvents(gtx, theme)
 
 			if LoadProgramButton.Clicked(gtx) {
-				core.Reset()
+				core.ResetSim()
 
 				go func() {
-					programName := loader.OpenObjectFile()
+					programName := core.OpenObjectFile()
 					internal.SetWIndowTitle(programName, w)
-					proc.InitProcState()
+					core.InitProcState()
 				}()
 			}
 			if ExecuteStepButton.Clicked(gtx) {
-				go proc.ExecuteNextInstruction()
+				go core.ExecuteNextInstruction()
 			}
 			if ExecuteStartStopButton.Clicked(gtx) {
 				core.SimExecuteState = !core.SimExecuteState
 				go func() {
 					for core.SimExecuteState == core.ExecuteStartState {
-						proc.ExecuteNextInstruction()
+						core.ExecuteNextInstruction()
 					}
 				}()
 			}
 			if ResetSimButton.Clicked(gtx) {
 				internal.ResetWIndowTitle(w)
 				go func() {
-					core.Reset()
-					proc.InitProcState()
+					core.ResetSim()
+					core.InitProcState()
 				}()
 			}
 

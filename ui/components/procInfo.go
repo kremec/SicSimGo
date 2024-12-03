@@ -2,7 +2,7 @@ package components
 
 import (
 	"fmt"
-	"sicsimgo/core/proc"
+	"sicsimgo/core"
 
 	"gioui.org/layout"
 	"gioui.org/widget/material"
@@ -12,48 +12,48 @@ func ProcInfo(
 	gtx *C, theme *material.Theme,
 ) D {
 
-	var currentInstructionSize int = len(proc.CurrentProcState.Instruction.Bytes)
+	var currentInstructionSize int = len(core.CurrentProcState.Instruction.Bytes)
 	var currentInstructionHex string
 	for i := 0; i < currentInstructionSize; i++ {
-		currentInstructionHex += fmt.Sprintf("%02X ", proc.CurrentProcState.Instruction.Bytes[i])
+		currentInstructionHex += fmt.Sprintf("%02X ", core.CurrentProcState.Instruction.Bytes[i])
 	}
 	var currentInstructionBin string
 	for i := 0; i < currentInstructionSize; i++ {
-		currentInstructionBin += fmt.Sprintf("%08b ", proc.CurrentProcState.Instruction.Bytes[i])
+		currentInstructionBin += fmt.Sprintf("%08b ", core.CurrentProcState.Instruction.Bytes[i])
 	}
 
-	var currentInstructionOpcode string = fmt.Sprintf("%02X", proc.CurrentProcState.Instruction.OpcodeByte)
+	var currentInstructionOpcode string = fmt.Sprintf("%02X", core.CurrentProcState.Instruction.Bytes[0])
 
-	instructionFormat34 := proc.CurrentProcState.Instruction.Format == proc.InstructionFormat3 || proc.CurrentProcState.Instruction.Format == proc.InstructionFormat4
+	instructionFormat34 := core.CurrentProcState.Instruction.Format == core.InstructionFormat3 || core.CurrentProcState.Instruction.Format == core.InstructionFormat4
 	var currentBitsNixbpe string
 
 	if instructionFormat34 {
-		if proc.CurrentProcState.N {
+		if core.CurrentProcState.N {
 			currentBitsNixbpe += "n"
 		} else {
 			currentBitsNixbpe += "-"
 		}
-		if proc.CurrentProcState.I {
+		if core.CurrentProcState.I {
 			currentBitsNixbpe += "i"
 		} else {
 			currentBitsNixbpe += "-"
 		}
-		if proc.CurrentProcState.X {
+		if core.CurrentProcState.X {
 			currentBitsNixbpe += "x"
 		} else {
 			currentBitsNixbpe += "-"
 		}
-		if proc.CurrentProcState.B {
+		if core.CurrentProcState.B {
 			currentBitsNixbpe += "b"
 		} else {
 			currentBitsNixbpe += "-"
 		}
-		if proc.CurrentProcState.P {
+		if core.CurrentProcState.P {
 			currentBitsNixbpe += "p"
 		} else {
 			currentBitsNixbpe += "-"
 		}
-		if proc.CurrentProcState.E {
+		if core.CurrentProcState.E {
 			currentBitsNixbpe += "e"
 		} else {
 			currentBitsNixbpe += "-"
@@ -84,10 +84,10 @@ func ProcInfo(
 			return material.Body1(theme, "Opcode: "+currentInstructionOpcode).Layout(gtx)
 		}),
 		layout.Rigid(func(gtx C) D {
-			return material.Body1(theme, "Operation: "+proc.CurrentProcState.Instruction.Opcode.String()).Layout(gtx)
+			return material.Body1(theme, "Operation: "+core.CurrentProcState.Instruction.Opcode.String()).Layout(gtx)
 		}),
 		layout.Rigid(func(gtx C) D {
-			return material.Body1(theme, "Instruction format: "+proc.CurrentProcState.Instruction.Format.String()).Layout(gtx)
+			return material.Body1(theme, "Instruction format: "+core.CurrentProcState.Instruction.Format.String()).Layout(gtx)
 		}),
 
 		layout.Rigid(layout.Spacer{Height: 0}.Layout),
@@ -101,14 +101,14 @@ func ProcInfo(
 		}),
 		layout.Rigid(func(gtx C) D {
 			if instructionFormat34 {
-				return material.Body1(theme, "Address: "+proc.CurrentProcState.Address.StringHex()).Layout(gtx)
+				return material.Body1(theme, "Address: "+core.CurrentProcState.Address.StringHex()).Layout(gtx)
 			} else {
 				return layout.Dimensions{}
 			}
 		}),
 		layout.Rigid(func(gtx C) D {
-			if instructionFormat34 && !proc.CurrentProcState.Instruction.Opcode.IsJumpInstruction() {
-				return material.Body1(theme, "Operand: "+proc.CurrentProcState.Operand.StringHex()).Layout(gtx)
+			if instructionFormat34 && !core.CurrentProcState.Instruction.IsJumpInstruction() {
+				return material.Body1(theme, "Operand: "+core.CurrentProcState.Operand.StringHex()).Layout(gtx)
 			} else {
 				return layout.Dimensions{}
 			}

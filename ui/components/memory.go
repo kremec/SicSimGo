@@ -1,7 +1,7 @@
 package components
 
 import (
-	"sicsimgo/core"
+	"sicsimgo/core/base"
 
 	"gioui.org/layout"
 	"gioui.org/widget"
@@ -18,16 +18,16 @@ func Memory(gtx *layout.Context, theme *material.Theme, memoryList *widget.List)
 		}),
 		layout.Flexed(1, func(gtx C) D {
 			return material.List(theme, memoryList).Layout(gtx, 65536, func(gtx C, index int) D {
-				address := core.ToAddress(uint32(index) * 16)
+				address := base.ToAddress(uint32(index) * 16)
 				return layout.Flex{
 					Axis:      layout.Horizontal,
 					Alignment: layout.End,
 				}.Layout(gtx,
 					layout.Rigid(func(gtx C) D {
-						return material.Body1(theme, core.StringAddress(address)+"  :  ").Layout(gtx)
+						return material.Body1(theme, base.StringAddress(address)+"  :  ").Layout(gtx)
 					}),
 					layout.Rigid(func(gtx C) D {
-						return material.Body1(theme, core.String16Bytes(address)).Layout(gtx)
+						return material.Body1(theme, base.String16Bytes(address)).Layout(gtx)
 					}),
 				)
 			})

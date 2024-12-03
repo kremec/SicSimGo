@@ -1,8 +1,13 @@
-package proc
+package core
 
+/*
+DEFINITIONS
+*/
 type Opcode byte
 
-var (
+type InstructionFormat int
+
+const (
 	ADD    Opcode = 0x18
 	ADDF   Opcode = 0x58
 	ADDR   Opcode = 0x90
@@ -64,8 +69,6 @@ var (
 	WD     Opcode = 0xDC
 )
 
-type InstructionFormat int
-
 const (
 	InstructionFormat1   InstructionFormat = 1
 	InstructionFormat2   InstructionFormat = 2
@@ -77,25 +80,91 @@ const (
 	InstructionUnknown  InstructionFormat = -1
 )
 
-func GetInstructionFormatFromOpcode(opcode Opcode, byte1 byte) (InstructionFormat, error) {
-	// Format 1
-	format1Instructions := []Opcode{
-		FIX, FLOAT, HIO, NORM, SIO, TIO,
-	}
-	for _, op := range format1Instructions {
-		if opcode == op {
-			return InstructionFormat1, nil
-		}
+var opcodesFormat1 = map[Opcode]InstructionFormat{
+	FIX:   InstructionFormat1,
+	FLOAT: InstructionFormat1,
+	HIO:   InstructionFormat1,
+	NORM:  InstructionFormat1,
+	SIO:   InstructionFormat1,
+	TIO:   InstructionFormat1,
+}
+var opcodesFormat2 = map[Opcode]InstructionFormat{
+	ADDR:   InstructionFormat2,
+	CLEAR:  InstructionFormat2,
+	COMPR:  InstructionFormat2,
+	DIVR:   InstructionFormat2,
+	MULR:   InstructionFormat2,
+	RMO:    InstructionFormat2,
+	SHIFTL: InstructionFormat2,
+	SHIFTR: InstructionFormat2,
+	SUBR:   InstructionFormat2,
+	SVC:    InstructionFormat2,
+	TIXR:   InstructionFormat2,
+}
+var opcodesFormat34 = map[Opcode]InstructionFormat{
+	ADD:   InstructionFormat34,
+	ADDF:  InstructionFormat34,
+	AND:   InstructionFormat34,
+	COMP:  InstructionFormat34,
+	COMPF: InstructionFormat34,
+	DIV:   InstructionFormat34,
+	DIVF:  InstructionFormat34,
+	J:     InstructionFormat34,
+	JEQ:   InstructionFormat34,
+	JGT:   InstructionFormat34,
+	JLT:   InstructionFormat34,
+	JSUB:  InstructionFormat34,
+	LDA:   InstructionFormat34,
+	LDB:   InstructionFormat34,
+	LDCH:  InstructionFormat34,
+	LDF:   InstructionFormat34,
+	LDL:   InstructionFormat34,
+	LDS:   InstructionFormat34,
+	LDT:   InstructionFormat34,
+	LDX:   InstructionFormat34,
+	LPS:   InstructionFormat34,
+	MUL:   InstructionFormat34,
+	MULF:  InstructionFormat34,
+	OR:    InstructionFormat34,
+	RD:    InstructionFormat34,
+	RSUB:  InstructionFormat34,
+	SSK:   InstructionFormat34,
+	STA:   InstructionFormat34,
+	STB:   InstructionFormat34,
+	STCH:  InstructionFormat34,
+	STF:   InstructionFormat34,
+	STI:   InstructionFormat34,
+	STL:   InstructionFormat34,
+	STS:   InstructionFormat34,
+	STSW:  InstructionFormat34,
+	STT:   InstructionFormat34,
+	STX:   InstructionFormat34,
+	SUB:   InstructionFormat34,
+	SUBF:  InstructionFormat34,
+	TD:    InstructionFormat34,
+	TIX:   InstructionFormat34,
+	WD:    InstructionFormat34,
+}
+
+/*
+OPERATIONS
+*/
+func GetOpcode(byte1 byte) Opcode {
+	return Opcode(byte1 & 0xFC)
+}
+
+func GetInstructionFormat(byte1 byte) (InstructionFormat, error) {
+
+	opcode := GetOpcode(byte1)
+
+	// Check opcode format
+	if _, exists := opcodesFormat1[opcode]; exists {
+		return InstructionFormat1, nil
 	}
 
 	// Format 2
-	format2Instructions := []Opcode{
-		ADDR, CLEAR, COMPR, DIVR, MULR, RMO, SHIFTL, SHIFTR, SUBR, SVC, TIXR,
-	}
-	for _, op := range format2Instructions {
-		if opcode == op {
-			return InstructionFormat2, nil
-		}
+	if _, exists := opcodesFormat2[opcode]; exists {
+		return InstructionFormat2, nil
 	}
 
 	// SIC format
@@ -103,20 +172,15 @@ func GetInstructionFormatFromOpcode(opcode Opcode, byte1 byte) (InstructionForma
 		return InstructionFormatSIC, nil
 	}
 
-	// Default to Format 3/4
-	format34Instructions := []Opcode{
-		ADD, ADDF, AND, COMP, COMPF, DIV, DIVF, J, JEQ, JGT, JLT, JSUB, LDA, LDB, LDCH, LDF, LDL, LDS, LDT, LDX, LPS, MUL, MULF, OR, RD, RSUB, SSK, STA, STB, STCH, STF, STI, STL, STS, STSW, STT, STX, SUB, SUBF, TD, TIX, WD,
-	}
-	for _, op := range format34Instructions {
-		if opcode == op {
-			return InstructionFormat34, nil
-		}
+	// Format 3/4
+	if _, exists := opcodesFormat34[opcode]; exists {
+		return InstructionFormat34, nil
 	}
 
-	return InstructionUnknown, InvalidOpcode(opcode)
+	return InstructionUnknown, ErrInvalidOpcode(opcode)
 }
 
-func GetInstructionFormat3Or4FromByte(byte2 byte) InstructionFormat {
+func GetInstructionFormat34(byte2 byte) InstructionFormat {
 	e := (byte2 & 0b00010000) > 0
 	if e {
 		return InstructionFormat4
@@ -125,14 +189,17 @@ func GetInstructionFormat3Or4FromByte(byte2 byte) InstructionFormat {
 	}
 }
 
-func (opcode Opcode) IsJumpInstruction() bool {
-	switch opcode {
+func (instruction Instruction) IsJumpInstruction() bool {
+	switch instruction.Opcode {
 	case J, JSUB, JEQ, JGT, JLT:
 		return true
 	}
 	return false
 }
 
+/*
+STRINGS
+*/
 func (instructionFormat InstructionFormat) String() string {
 	switch instructionFormat {
 	case InstructionFormat1:
@@ -152,6 +219,7 @@ func (instructionFormat InstructionFormat) String() string {
 	}
 	return "Not implemented"
 }
+
 func (opcode Opcode) String() string {
 	switch opcode {
 	case ADD:

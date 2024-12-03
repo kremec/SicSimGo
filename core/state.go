@@ -1,10 +1,14 @@
-package proc
+package core
 
 import (
-	"fmt"
-	"sicsimgo/core"
+	"sicsimgo/core/base"
 	"sicsimgo/core/units"
 )
+
+/*
+DEFINITIONS
+*/
+type ExecuteState bool
 
 type ProcState struct {
 	Instruction      Instruction
@@ -13,9 +17,23 @@ type ProcState struct {
 	Address          units.Int24
 }
 
+const (
+	ExecuteStartState ExecuteState = true
+	ExecuteStopState  ExecuteState = false
+)
+
+/*
+IMPLEMENTATION
+*/
+var SimExecuteState ExecuteState = ExecuteStopState
+var CurrentProcState ProcState = ProcState{}
+
+/*
+OPERATIONS
+*/
 func InitProcState() {
 	instruction := FetchNextInstruction(false)
-	UpdateProcState(instruction, core.GetRegisterPC())
+	UpdateProcState(instruction, base.GetRegisterPC())
 }
 
 func UpdateProcState(instruction Instruction, pc units.Int24) {
@@ -38,7 +56,7 @@ func UpdateProcState(instruction Instruction, pc units.Int24) {
 	if instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4 {
 		operand, address = instruction.GetOperandAddress(pc)
 	}
-	var n, i, x, b, p, e = getNIXBPEBits(instruction.Bytes)
+	var n, i, x, b, p, e = GetNIXBPEBits(instruction.Bytes)
 
 	CurrentProcState = ProcState{
 		Instruction: instruction,
@@ -53,28 +71,13 @@ func UpdateProcState(instruction Instruction, pc units.Int24) {
 	}
 }
 
-var CurrentProcState ProcState = ProcState{}
+func StopSim() {
+	SimExecuteState = ExecuteStopState
+}
 
-func ExecuteNextInstruction() {
-	instruction := FetchNextInstruction(true)
-
-	// halt J halt -> Stop execution
-	endOfProgram := false
-	_, address := instruction.GetOperandAddress(core.GetRegisterPC())
-	pcOfInstruction := core.GetRegisterPC()
-	for i := 0; i < len(instruction.Bytes); i++ {
-		pcOfInstruction = pcOfInstruction.Sub(units.Int24{0x00, 0x00, 0x01})
-	}
-	fmt.Printf("Check for HALT: %s : %s\n", address.StringHex(), pcOfInstruction.StringHex())
-	if instruction.Opcode == J && address.Compare(pcOfInstruction) == 0 {
-		// End of program
-		core.SimExecuteState = false
-		endOfProgram = true
-	}
-
-	if !endOfProgram {
-		pc := core.GetRegisterPC()
-		UpdateProcState(instruction, pc)
-	}
-	instruction.Execute()
+func ResetSim() {
+	SimExecuteState = ExecuteStopState
+	Disassembly = []DisassemblyInstruction{}
+	base.ResetRegisters()
+	base.ResetMemory()
 }
