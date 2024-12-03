@@ -57,6 +57,9 @@ func DrawWindow(w *app.Window) error {
 	memoryList := widget.List{
 		List: layout.List{Axis: layout.Vertical},
 	}
+	instructionList := widget.List{
+		List: layout.List{Axis: layout.Vertical},
+	}
 
 	proc.InitProcState()
 
@@ -155,7 +158,7 @@ func DrawWindow(w *app.Window) error {
 										Right:  unit.Dp(5),
 										Left:   unit.Dp(5),
 									}.Layout(gtx, func(gtx C) D {
-										return material.H6(theme, "Disassembly").Layout(gtx)
+										return components.Disassembly(&gtx, theme, &instructionList)
 									})
 								}),
 							)

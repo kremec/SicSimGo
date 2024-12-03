@@ -116,6 +116,23 @@ func GetInstructionFormatFromOpcode(opcode Opcode, byte1 byte) (InstructionForma
 	return InstructionUnknown, InvalidOpcode(opcode)
 }
 
+func GetInstructionFormat3Or4FromByte(byte2 byte) InstructionFormat {
+	e := (byte2 & 0b00010000) > 0
+	if e {
+		return InstructionFormat4
+	} else {
+		return InstructionFormat3
+	}
+}
+
+func (opcode Opcode) IsJumpInstruction() bool {
+	switch opcode {
+	case J, JSUB, JEQ, JGT, JLT:
+		return true
+	}
+	return false
+}
+
 func (instructionFormat InstructionFormat) String() string {
 	switch instructionFormat {
 	case InstructionFormat1:

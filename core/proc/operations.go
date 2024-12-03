@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sicsimgo/core"
@@ -27,71 +28,51 @@ func FetchNextInstruction(updatePC bool) Instruction {
 		panic(err)
 	}
 
-	if instructionFormatFromOpcode == InstructionFormat1 {
+	instructionBytes := []byte{byte1}
 
+	if instructionFormatFromOpcode == InstructionFormat1 {
 		if updatePC {
 			core.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x01}))
 		}
-		return Instruction{
-			Format:     InstructionFormat1,
-			Bytes:      []byte{byte1},
-			Opcode:     opcode,
-			OpcodeByte: opcodeByte,
-		}
 	} else if instructionFormatFromOpcode == InstructionFormat2 {
 		byte2 := core.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x01}))
+		instructionBytes = append(instructionBytes, byte2)
 
 		if updatePC {
 			core.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x02}))
 		}
-		return Instruction{
-			Format:     InstructionFormat2,
-			Bytes:      []byte{byte1, byte2},
-			Opcode:     opcode,
-			OpcodeByte: opcodeByte,
-		}
 	} else if instructionFormatFromOpcode == InstructionFormatSIC {
 		byte2 := core.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x01}))
 		byte3 := core.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x02}))
+		instructionBytes = append(instructionBytes, byte2)
+		instructionBytes = append(instructionBytes, byte3)
 
 		if updatePC {
 			core.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x03}))
 		}
-		return Instruction{
-			Format:     InstructionFormatSIC,
-			Bytes:      []byte{byte1, byte2, byte3},
-			Opcode:     opcode,
-			OpcodeByte: opcodeByte,
-		}
 	} else if instructionFormatFromOpcode == InstructionFormat34 {
 		byte2 := core.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x01}))
 		byte3 := core.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x02}))
+		instructionBytes = append(instructionBytes, byte2)
+		instructionBytes = append(instructionBytes, byte3)
 
-		e := (byte2 & 0b00010000) > 0
-		if !e {
+		instructionType := GetInstructionFormat3Or4FromByte(byte2)
+		if instructionType == InstructionFormat3 {
+			instructionFormatFromOpcode = InstructionFormat3
+
 			if updatePC {
 				core.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x03}))
 			}
-			return Instruction{
-				Format:     InstructionFormat3,
-				Bytes:      []byte{byte1, byte2, byte3},
-				Opcode:     opcode,
-				OpcodeByte: opcodeByte,
-			}
 		} else {
+			instructionFormatFromOpcode = InstructionFormat4
+
 			byte4 := core.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x03}))
+			instructionBytes = append(instructionBytes, byte4)
 
 			if updatePC {
 				core.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x04}))
 			}
-			return Instruction{
-				Format:     InstructionFormat4,
-				Bytes:      []byte{byte1, byte2, byte3, byte4},
-				Opcode:     opcode,
-				OpcodeByte: opcodeByte,
-			}
 		}
-
 	} else {
 		return Instruction{
 			Format:     InstructionUnknown,
@@ -100,11 +81,26 @@ func FetchNextInstruction(updatePC bool) Instruction {
 			OpcodeByte: 0x00,
 		}
 	}
+
+	return GetInstructionFromBytes(instructionFormatFromOpcode, opcode, instructionBytes)
 }
 
-var debugExecuteInstruction bool = false
+func GetInstructionFromBytes(instructionFormat InstructionFormat, opcode Opcode, bytes []byte) Instruction {
+	return Instruction{
+		Format:     instructionFormat,
+		Bytes:      bytes,
+		Opcode:     opcode,
+		OpcodeByte: bytes[0],
+	}
+}
+
+var debugExecuteInstruction bool = true
 
 func (instruction Instruction) Execute() error {
+
+	if debugExecuteInstruction {
+		fmt.Printf("Execute Instruction: Opcode %02X - Format %d\n", instruction.Opcode, instruction.Format)
+	}
 
 	switch instruction.Format {
 	case InstructionFormat1:
@@ -177,12 +173,17 @@ func executeFormat1(instruction Instruction) error {
 	return nil
 }
 
+func GetR1R2FromByte(byte2 byte) (core.RegisterId, core.RegisterId) {
+	r1Id := core.RegisterId(byte2 & 0xF0 >> 4)
+	r2Id := core.RegisterId(byte2 & 0x0F)
+	return r1Id, r2Id
+}
+
 var debugExecuteFormat2 bool = false
 
 func executeFormat2(instruction Instruction) error {
 
-	r1Id := core.RegisterId(instruction.Bytes[1] & 0xF0 >> 4)
-	r2Id := core.RegisterId(instruction.Bytes[1] & 0x0F)
+	r1Id, r2Id := GetR1R2FromByte(instruction.Bytes[1])
 	r1, err := core.GetRegister(r1Id)
 	if err != nil {
 		return err
@@ -230,7 +231,7 @@ func executeFormat2(instruction Instruction) error {
 
 var debugGetOperandAddress bool = false
 
-func (instruction Instruction) getOperandAddress(pc units.Int24) (units.Int24, units.Int24) {
+func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, units.Int24) {
 	n, i, x, b, p, _ := getNIXBPEBits(instruction.Bytes)
 	relativeAddressingMode, err := GetRelativeAdressingModes(b, p)
 	if err != nil {
@@ -241,6 +242,9 @@ func (instruction Instruction) getOperandAddress(pc units.Int24) (units.Int24, u
 	indexAddressingMode := GetIndexAdressingModes(x)
 
 	var address units.Int24
+	if debugGetOperandAddress {
+		fmt.Println("Format: ", instruction.Format)
+	}
 	switch instruction.Format {
 	case InstructionFormatSIC:
 		address = units.Int24{0x00, instruction.Bytes[1] & 0b01111111, instruction.Bytes[2]}
@@ -257,6 +261,7 @@ func (instruction Instruction) getOperandAddress(pc units.Int24) (units.Int24, u
 
 	if debugGetOperandAddress {
 		fmt.Println("    Instruction:", instruction.Opcode.String())
+		fmt.Println("    Instruction bytes: ", hex.EncodeToString(instruction.Bytes))
 		fmt.Println("    Address: ", address.StringHex())
 		fmt.Println("        Relative addressing mode: ", relativeAddressingMode.String())
 		fmt.Println("        Absolute addressing mode: ", absoluteAddressingMode.String())
@@ -307,7 +312,7 @@ func (instruction Instruction) getOperandAddress(pc units.Int24) (units.Int24, u
 	return operand, address
 }
 func executeFormatSIC34(instruction Instruction) error {
-	operand, address := instruction.getOperandAddress(core.GetRegisterPC())
+	operand, address := instruction.GetOperandAddress(core.GetRegisterPC())
 
 	switch instruction.Opcode {
 	case ADD:

@@ -20,7 +20,7 @@ func InitProcState() {
 
 func UpdateProcState(instruction Instruction, pc units.Int24) {
 
-	fmt.Println("PC: ", pc.StringHex())
+	//fmt.Println("PC: ", pc.StringHex())
 
 	// Get next instruction and PC (simulate fetch)
 	if (pc.Compare(units.Int24{}) != 0) {
@@ -36,7 +36,7 @@ func UpdateProcState(instruction Instruction, pc units.Int24) {
 
 	var operand, address units.Int24
 	if instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4 {
-		operand, address = instruction.getOperandAddress(pc)
+		operand, address = instruction.GetOperandAddress(pc)
 	}
 	var n, i, x, b, p, e = getNIXBPEBits(instruction.Bytes)
 
@@ -60,11 +60,12 @@ func ExecuteNextInstruction() {
 
 	// halt J halt -> Stop execution
 	endOfProgram := false
-	_, address := instruction.getOperandAddress(core.GetRegisterPC())
+	_, address := instruction.GetOperandAddress(core.GetRegisterPC())
 	pcOfInstruction := core.GetRegisterPC()
 	for i := 0; i < len(instruction.Bytes); i++ {
 		pcOfInstruction = pcOfInstruction.Sub(units.Int24{0x00, 0x00, 0x01})
 	}
+	fmt.Printf("Check for HALT: %s : %s\n", address.StringHex(), pcOfInstruction.StringHex())
 	if instruction.Opcode == J && address.Compare(pcOfInstruction) == 0 {
 		// End of program
 		core.SimExecuteState = false

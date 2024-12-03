@@ -107,8 +107,7 @@ func ProcInfo(
 			}
 		}),
 		layout.Rigid(func(gtx C) D {
-			isJumpInstruction := proc.CurrentProcState.Instruction.Opcode == proc.J || proc.CurrentProcState.Instruction.Opcode == proc.JSUB || proc.CurrentProcState.Instruction.Opcode == proc.JEQ || proc.CurrentProcState.Instruction.Opcode == proc.JGT || proc.CurrentProcState.Instruction.Opcode == proc.JLT
-			if instructionFormat34 && !isJumpInstruction {
+			if instructionFormat34 && !proc.CurrentProcState.Instruction.Opcode.IsJumpInstruction() {
 				return material.Body1(theme, "Operand: "+proc.CurrentProcState.Operand.StringHex()).Layout(gtx)
 			} else {
 				return layout.Dimensions{}

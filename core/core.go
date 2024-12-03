@@ -4,7 +4,6 @@ import (
 	"sicsimgo/core/units"
 )
 
-// Internal state
 var registers Registers = Registers{
 	A:  units.Int24{},
 	X:  units.Int24{},
@@ -20,7 +19,6 @@ var memory Memory = Memory{
 	Data: make([]byte, MEMORY_SIZE),
 }
 
-// Public state
 type ExecuteState bool
 
 const (

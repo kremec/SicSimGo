@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
+
 	"sicsimgo/core"
 	"sicsimgo/core/units"
 	"sicsimgo/internal"
-	"strconv"
-	"strings"
 
 	"github.com/sqweek/dialog"
 )
@@ -28,7 +29,7 @@ func OpenObjectFile() string {
 	return LoadProgram(file)
 }
 
-var debugLoadProgram bool = true
+var debugLoadProgram bool = false
 
 func LoadProgram(file *os.File) string {
 	var programName string
@@ -43,7 +44,7 @@ func LoadProgram(file *os.File) string {
 		if record[0] == 'H' {
 			progName, codeAddr, codeLen := GetHeaderRecord(record)
 			if debugLoadProgram {
-				fmt.Printf("Header: %s|%s|%s\n", progName, codeAddr.StringHex(), codeLen.StringHex())
+				fmt.Printf("  Header: %s|%s|%s\n", progName, codeAddr.StringHex(), codeLen.StringHex())
 			}
 
 			programName = progName
@@ -51,18 +52,28 @@ func LoadProgram(file *os.File) string {
 		} else if record[0] == 'T' {
 			codeAddress, code := GetTextRecord(record)
 			if debugLoadProgram {
-				fmt.Printf("    Text: %s|% X\n", codeAddress.StringHex(), code)
+				fmt.Printf("  Text: %s|% X\n", codeAddress.StringHex(), code)
 			}
 
+			// Memory
 			idx := units.Int24{}
 			for i := 0; i < len(code); i++ {
 				core.SetByte(codeAddress.Add(idx.Add(codeOffset)), code[i])
 				idx = idx.Add(units.Int24{0x00, 0x00, 0x01})
 			}
+
+			// Dissasembly
+			instructions := GetInstructionsFromTextRecord(codeAddress, code)
+			for _, instruction := range instructions {
+				if debugLoadProgram {
+					fmt.Printf("    Address: %s, Format: %s, Bytes: % X, Opcode: %s, Operand: %s\n", instruction.InstructionAddress.StringHex(), instruction.Instruction.Format.String(), instruction.Instruction.Bytes, instruction.Instruction.Opcode.String(), instruction.Operand.StringHex())
+				}
+			}
+			Instructions = append(Instructions, instructions...)
 		} else if record[0] == 'E' {
 			endAddress := GetEndRecord(record)
 			if debugLoadProgram {
-				fmt.Printf("    End: %s\n", endAddress.StringHex())
+				fmt.Printf("  End: %s\n", endAddress.StringHex())
 			}
 
 			core.SetRegisterPC(endAddress.Add(codeOffset))
