@@ -15,12 +15,13 @@ func main() {
 
 		// Create a window
 		w := new(app.Window)
-		internal.ResetWIndowTitle(w)
+		internal.ResetWindowTitle(w)
 		w.Option(app.Size(unit.Dp(1050), unit.Dp(450)))
 
 		if err := ui.DrawWindow(w); err != nil {
 			log.Fatal(err)
 		}
+
 		os.Exit(0)
 	}()
 	app.Main()

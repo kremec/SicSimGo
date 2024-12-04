@@ -72,10 +72,11 @@ func DrawWindow(w *app.Window) error {
 
 			if LoadProgramButton.Clicked(gtx) {
 				core.ResetSim()
+				core.InitProcState()
 
 				go func() {
 					programName := core.OpenObjectFile()
-					internal.SetWIndowTitle(programName, w)
+					internal.SetWindowTitle(programName, w)
 					core.InitProcState()
 				}()
 			}
@@ -91,7 +92,7 @@ func DrawWindow(w *app.Window) error {
 				}()
 			}
 			if ResetSimButton.Clicked(gtx) {
-				internal.ResetWIndowTitle(w)
+				internal.ResetWindowTitle(w)
 				go func() {
 					core.ResetSim()
 					core.InitProcState()

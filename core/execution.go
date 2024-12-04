@@ -198,37 +198,39 @@ func executeFormatSIC34(instruction Instruction) error {
 	// TODO: SYSCALL
 	case SSK:
 	case STA:
-		base.SetWord(operand, base.GetRegisterA())
+		base.SetWord(address, base.GetRegisterA())
 	case STB:
-		base.SetWord(operand, base.GetRegisterB())
+		base.SetWord(address, base.GetRegisterB())
 	case STCH:
-		base.SetByte(operand, base.GetRegisterA()[2])
+		base.SetByte(address, base.GetRegisterA()[2])
 	// TODO: FLOAT
 	case STF:
 	// TODO: SYSCALL
 	case STI:
 	case STL:
-		base.SetWord(operand, base.GetRegisterL())
+		base.SetWord(address, base.GetRegisterL())
 	case STS:
-		base.SetWord(operand, base.GetRegisterS())
+		base.SetWord(address, base.GetRegisterS())
 	case STSW:
-		base.SetWord(operand, base.GetRegisterSW())
+		base.SetWord(address, base.GetRegisterSW())
 	case STT:
-		base.SetWord(operand, base.GetRegisterT())
+		base.SetWord(address, base.GetRegisterT())
 	case STX:
-		base.SetWord(operand, base.GetRegisterX())
+		base.SetWord(address, base.GetRegisterX())
 	case SUB:
 		base.SetRegisterA(base.GetRegisterA().Sub(operand))
 	// TODO: FLOAT
 	case SUBF:
 	// TODO: SYSCALL
 	case TD:
+		base.Test()
 	case TIX:
 		base.SetRegisterX(base.GetRegisterX().Add(units.Int24{0x00, 0x00, 0x01}))
 		compareOperation(base.GetRegisterX(), operand)
 	case WD:
-		if err := base.Write(base.Device(operand[2]), base.GetRegisterA()[2]); err != nil {
-			// TODO: Handle error
+		fmt.Printf("WD -> Operand %s Device %02X\n", operand.StringHex(), operand[len(operand)-1])
+		if err := base.Write(base.Device(operand[len(operand)-1]), base.GetRegisterA()[2]); err != nil {
+			panic(err)
 		}
 	}
 

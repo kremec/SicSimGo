@@ -41,6 +41,10 @@ func LoadProgram(file *os.File) string {
 	var programName string
 	var codeOffset units.Int24
 
+	var previousTextRecordAddr units.Int24
+	var previousTextrecordCodeLen int
+	var leftoverBytes []byte
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		record := scanner.Text()
@@ -55,6 +59,7 @@ func LoadProgram(file *os.File) string {
 
 			programName = progName
 			codeOffset = codeAddr
+			leftoverBytes = []byte{}
 		} else if record[0] == 'T' {
 			codeAddress, code := GetTextRecord(record)
 			if debugLoadProgram {
@@ -68,14 +73,51 @@ func LoadProgram(file *os.File) string {
 				idx = idx.Add(units.Int24{0x00, 0x00, 0x01})
 			}
 
+			// Handle leftover bytes
+			if len(leftoverBytes) > 0 {
+				if debugLoadProgram {
+					fmt.Printf("Leftover bytes: % X\n", leftoverBytes)
+				}
+				savePreviousTextRecordAddr := previousTextRecordAddr
+				// Check for text record continuity if leftover bytes exist
+				for i := 0; i < previousTextrecordCodeLen; i++ {
+					previousTextRecordAddr = previousTextRecordAddr.Add(units.Int24{0x00, 0x00, 0x01})
+				}
+				if codeAddress.Compare(previousTextRecordAddr) != 0 {
+					if debugLoadProgram {
+						fmt.Printf("codeAddress: %s, previousTextRecordAddr: %s, previousTextrecordCodeLen: %d\n", codeAddress.StringHex(), savePreviousTextRecordAddr.StringHex(), previousTextrecordCodeLen)
+					}
+					// Text records aren't continuing, error
+					panic(fmt.Errorf("Previous T record ended with leftover bytes, but current T record isn't continuing from there onwards!"))
+				}
+
+				// Add leftover bytes
+				newCode := leftoverBytes
+				newCode = append(newCode, code...)
+				code = newCode
+
+				// Fix start address
+				for i := 0; i < len(leftoverBytes); i++ {
+					codeAddress = codeAddress.Sub(units.Int24{0x00, 0x00, 0x01})
+				}
+
+				leftoverBytes = []byte{}
+			}
+
 			// Dissasembly
-			instructions := GetDisassemblyInstructionsFromTextRecord(codeAddress, code)
+			instructions, bytesFromIncompleteInstruction := GetDisassemblyInstructionsFromTextRecord(codeAddress, code)
 			for _, instruction := range instructions {
 				if debugLoadProgram {
 					fmt.Printf("    Address: %s, Format: %s, Bytes: % X, Opcode: %s, Operand: %s\n", instruction.InstructionAddress.StringHex(), instruction.Instruction.Format.String(), instruction.Instruction.Bytes, instruction.Instruction.Opcode.String(), instruction.Operand.StringHex())
 				}
 			}
 			Disassembly = append(Disassembly, instructions...)
+
+			if len(bytesFromIncompleteInstruction) != 0 {
+				leftoverBytes = bytesFromIncompleteInstruction
+				previousTextRecordAddr = codeAddress
+				previousTextrecordCodeLen = len(code)
+			}
 		} else if record[0] == 'E' {
 			endAddress := GetEndRecord(record)
 			if debugLoadProgram {
@@ -83,6 +125,7 @@ func LoadProgram(file *os.File) string {
 			}
 
 			base.SetRegisterPC(endAddress.Add(codeOffset))
+			leftoverBytes = []byte{}
 		}
 	}
 

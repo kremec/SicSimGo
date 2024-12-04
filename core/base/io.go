@@ -12,6 +12,12 @@ DEFINITIONS
 type Device byte
 
 /*
+DEBUG
+*/
+const debugRead bool = true
+const debugWrite bool = true
+
+/*
 OPERATIONS
 */
 func Test() bool {
@@ -20,32 +26,60 @@ func Test() bool {
 
 func Read(device Device) (byte, error) {
 	switch device {
-	case Device(0x0):
+	case Device(0x00):
 		// Stdin
+		if debugRead {
+			fmt.Println("Reading from stdin")
+		}
 		reader := bufio.NewReader(os.Stdin)
-		return reader.ReadByte()
-	case Device(0x1):
+		return readByte(reader)
+	case Device(0x01):
 		// Stdout
+		if debugRead {
+			fmt.Println("Reading from stdout")
+		}
 		reader := bufio.NewReader(os.Stdout)
-		return reader.ReadByte()
-	case Device(0x2):
+		return readByte(reader)
+	case Device(0x02):
 		// Stderr
+		if debugRead {
+			fmt.Println("Reading from stderr")
+		}
 		reader := bufio.NewReader(os.Stderr)
-		return reader.ReadByte()
-	}
-	// XX.dev file
-	filename := fmt.Sprintf("%02X.dev", device)
-	file, err := os.Open(filename)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
+		return readByte(reader)
+	default:
+		// XX.dev file
+		filename := fmt.Sprintf("%02X.dev", device)
+		if debugRead {
+			fmt.Println("Reading from file ", filename)
+		}
+		file, err := os.Open(filename)
+		if err != nil {
+			return 0x00, err
+		}
+		defer file.Close()
 
-	reader := bufio.NewReader(file)
-	return reader.ReadByte()
+		reader := bufio.NewReader(file)
+		return readByte(reader)
+	}
+}
+func readByte(reader *bufio.Reader) (byte, error) {
+	readByte, err := reader.ReadByte()
+	if err != nil {
+		panic("error reading byte")
+	}
+	if debugRead {
+		fmt.Println("  Read byte:", readByte)
+	}
+	return readByte, err
 }
 
 func Write(device Device, data byte) error {
+
+	if debugWrite {
+		fmt.Println("Writing to device", device, "data:", data)
+	}
+
 	switch device {
 	case Device(0x0):
 		// Stdout

@@ -197,6 +197,14 @@ func (instruction Instruction) IsJumpInstruction() bool {
 	return false
 }
 
+func (instruction Instruction) IsStoreInstruction() bool {
+	switch instruction.Opcode {
+	case STCH, STA, STB, STF, STSW, STT, STX:
+		return true
+	}
+	return false
+}
+
 /*
 STRINGS
 */

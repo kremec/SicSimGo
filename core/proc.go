@@ -19,6 +19,7 @@ type Instruction struct {
 DEBUG
 */
 const debugFetchNextInstruction bool = false
+const debugExecuteNextInstruction bool = false
 
 /*
 OPERATIONS
@@ -107,9 +108,13 @@ func ExecuteNextInstruction() {
 	for i := 0; i < len(instruction.Bytes); i++ {
 		pcOfInstruction = pcOfInstruction.Sub(units.Int24{0x00, 0x00, 0x01})
 	}
-	fmt.Printf("Check for HALT: %s : %s\n", address.StringHex(), pcOfInstruction.StringHex())
+	if debugExecuteNextInstruction {
+		fmt.Printf("Check for HALT: %s : %s\n", address.StringHex(), pcOfInstruction.StringHex())
+	}
 	if instruction.Opcode == J && address.Compare(pcOfInstruction) == 0 {
-		fmt.Println("HALT")
+		if debugExecuteNextInstruction {
+			fmt.Println("HALT")
+		}
 		StopSim()
 	} else {
 		pc := base.GetRegisterPC()
