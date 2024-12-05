@@ -19,8 +19,12 @@ prog    START  0
         . SUBROUTINES
         JSUB subrt      . Call subroutine and return from it
 
+        . DISASSEMBLY FIX
+        J io
+testb   BYTE 0x00
+
         . IO
-        RD stdin
+io      RD stdin
         WD outdat
 
 halt    J halt

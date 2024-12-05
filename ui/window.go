@@ -59,8 +59,6 @@ func DrawWindow(w *app.Window) error {
 		List: layout.List{Axis: layout.Vertical},
 	}
 
-	core.InitProcState()
-
 	for {
 		switch e := w.Event().(type) {
 
@@ -72,12 +70,10 @@ func DrawWindow(w *app.Window) error {
 
 			if LoadProgramButton.Clicked(gtx) {
 				core.ResetSim()
-				core.InitProcState()
 
 				go func() {
 					programName := core.OpenObjectFile()
 					internal.SetWindowTitle(programName, w)
-					core.InitProcState()
 				}()
 			}
 			if ExecuteStepButton.Clicked(gtx) {
@@ -95,7 +91,6 @@ func DrawWindow(w *app.Window) error {
 				internal.ResetWindowTitle(w)
 				go func() {
 					core.ResetSim()
-					core.InitProcState()
 				}()
 			}
 

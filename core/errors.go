@@ -11,11 +11,18 @@ func ErrNotImplemented(mnemonic string) error {
 }
 
 func ErrInvalidOpcode(opcode Opcode) error {
-	log.Fatalf("Not implemented opcode: %02X", opcode)
 	return fmt.Errorf("Not implemented opcode: %02X", opcode)
 }
 
 func ErrInvalidAddressing() error {
-	log.Fatalf("Invalid addressing with b=1 and p=1")
 	return fmt.Errorf("Invalid addressing with b=1 and p=1")
+}
+
+func ErrDisassemblyEmpty() error {
+	return fmt.Errorf("Disassembly is empty")
+}
+
+func ErrDisassemblyIncorrect() error {
+	log.Fatalf("Disassembly is incorrect")
+	return fmt.Errorf("Disassembly is incorrect")
 }

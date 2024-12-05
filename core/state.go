@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"sicsimgo/core/base"
 	"sicsimgo/core/units"
 )
@@ -13,8 +14,6 @@ type ExecuteState bool
 type ProcState struct {
 	Instruction      Instruction
 	N, I, X, B, P, E bool
-	Operand          units.Int24
-	Address          units.Int24
 }
 
 const (
@@ -29,34 +28,35 @@ var SimExecuteState ExecuteState = ExecuteStopState
 var CurrentProcState ProcState = ProcState{}
 
 /*
+DEBUG
+*/
+var debugUpdateProcState bool = true
+
+/*
 OPERATIONS
 */
-func InitProcState() {
-	instruction := FetchNextInstruction(false)
-	UpdateProcState(instruction, base.GetRegisterPC())
-}
+func UpdateProcState(pc units.Int24) {
+	var instruction Instruction
 
-func UpdateProcState(instruction Instruction, pc units.Int24) {
-
-	//fmt.Println("PC: ", pc.StringHex())
+	if debugUpdateProcState {
+		fmt.Println("PC: ", pc.StringHex())
+	}
 
 	// Get next instruction and PC (simulate fetch)
-	if (pc.Compare(units.Int24{}) != 0) {
-		instruction = FetchNextInstruction(false)
+	nextInstruction, err := GetNextDisassemblyInstruction(false)
+	if err != nil {
+		if err == ErrDisassemblyEmpty() {
+			return
+		}
 	}
-	for i := 0; i < len(instruction.Bytes); i++ {
-		pc = pc.Add(units.Int24{0x00, 0x00, 0x01})
+	instruction = nextInstruction
+
+	if debugUpdateProcState {
+		fmt.Printf("Opcode: %s, Instruction bytes: % X\n", instruction.Opcode.String(), instruction.Bytes)
+		fmt.Println()
 	}
 
-	//fmt.Println("Instruction: ", instruction.Bytes, " ", instruction.Opcode.String())
-	//fmt.Println("PC after instruction: ", pc.StringHex())
-	//fmt.Println("")
-
-	var operand, address units.Int24
-	if instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4 {
-		operand, address = instruction.GetOperandAddress(pc)
-	}
-	var n, i, x, b, p, e = GetNIXBPEBits(instruction.Bytes)
+	n, i, x, b, p, e := instruction.GetNIXBPEBits()
 
 	CurrentProcState = ProcState{
 		Instruction: instruction,
@@ -66,8 +66,6 @@ func UpdateProcState(instruction Instruction, pc units.Int24) {
 		B:           b,
 		P:           p,
 		E:           e,
-		Operand:     operand,
-		Address:     address,
 	}
 }
 
@@ -77,7 +75,7 @@ func StopSim() {
 
 func ResetSim() {
 	SimExecuteState = ExecuteStopState
-	Disassembly = []DisassemblyInstruction{}
+	Disassembly = make(map[units.Int24]Instruction)
 	base.ResetRegisters()
 	base.ResetMemory()
 }

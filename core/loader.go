@@ -15,6 +15,11 @@ import (
 )
 
 /*
+IMPLEMENTATIONS
+*/
+var LastInstructionByteAddress units.Int24
+
+/*
 DEBUG
 */
 var debugLoadProgram bool = false
@@ -66,6 +71,15 @@ func LoadProgram(file *os.File) string {
 				fmt.Printf("  Text: %s|% X\n", codeAddress.StringHex(), code)
 			}
 
+			// Update last instruction byte address
+			LastInstructionByteAddress = codeAddress
+			if debugLoadProgram {
+				fmt.Printf("Fixing last instruction byte address - %s: adding %d\n", LastInstructionByteAddress.StringHex(), len(code))
+			}
+			for i := 0; i < len(code)-1; i++ {
+				LastInstructionByteAddress = LastInstructionByteAddress.Add(units.Int24{0x00, 0x00, 0x01})
+			}
+
 			// Memory
 			idx := units.Int24{}
 			for i := 0; i < len(code); i++ {
@@ -105,14 +119,15 @@ func LoadProgram(file *os.File) string {
 			}
 
 			// Dissasembly
-			instructions, bytesFromIncompleteInstruction := GetDisassemblyInstructionsFromTextRecord(codeAddress, code)
-			for _, instruction := range instructions {
+			instructions, bytesFromIncompleteInstruction := GetInstructions(codeAddress, code)
+			for address, instruction := range instructions {
 				if debugLoadProgram {
-					fmt.Printf("    Address: %s, Format: %s, Bytes: % X, Opcode: %s, Operand: %s\n", instruction.InstructionAddress.StringHex(), instruction.Instruction.Format.String(), instruction.Instruction.Bytes, instruction.Instruction.Opcode.String(), instruction.Operand.StringHex())
+					fmt.Printf("    Address: %s, Bytes: % X, Format: %s, Opcode: %s, Operand: %s\n", address.StringHex(), instruction.Bytes, instruction.Format.String(), instruction.Opcode.String(), instruction.Operand.StringHex())
 				}
+				Disassembly[address] = instruction
 			}
-			Disassembly = append(Disassembly, instructions...)
 
+			// Prepare next text record for leftover bytes
 			if len(bytesFromIncompleteInstruction) != 0 {
 				leftoverBytes = bytesFromIncompleteInstruction
 				previousTextRecordAddr = codeAddress
@@ -129,6 +144,12 @@ func LoadProgram(file *os.File) string {
 		}
 	}
 
+	UpdateDisassemblyInstructionList()
+	UpdateProcState(base.GetRegisterPC())
+
+	if debugLoadProgram {
+		fmt.Printf("Last instruction byte address: %s\n", LastInstructionByteAddress.StringHex())
+	}
 	return programName
 }
 

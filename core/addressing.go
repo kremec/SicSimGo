@@ -68,13 +68,22 @@ func GetIndexAdressingModes(x bool) IndexAddressingMode {
 	}
 }
 
-func GetNIXBPEBits(instructionBytes []byte) (n, i, x, b, p, e bool) {
-	n = instructionBytes[0]&0b00000010 > 0
-	i = instructionBytes[0]&0b00000001 > 0
-	x = instructionBytes[1]&0b10000000 > 0
-	b = instructionBytes[1]&0b01000000 > 0
-	p = instructionBytes[1]&0b00100000 > 0
-	e = instructionBytes[1]&0b00010000 > 0
+func (instruction Instruction) GetNIXBPEBits() (n, i, x, b, p, e bool) {
+	if instruction.IsFormatSIC34() && len(instruction.Bytes) > 2 {
+		n = instruction.Bytes[0]&0b00000010 > 0
+		i = instruction.Bytes[0]&0b00000001 > 0
+		x = instruction.Bytes[1]&0b10000000 > 0
+		b = instruction.Bytes[1]&0b01000000 > 0
+		p = instruction.Bytes[1]&0b00100000 > 0
+		e = instruction.Bytes[1]&0b00010000 > 0
+	} else {
+		n = false
+		i = false
+		x = false
+		b = false
+		p = false
+		e = false
+	}
 
 	return n, i, x, b, p, e
 }
@@ -90,7 +99,7 @@ func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, u
 	var operand units.Int24
 
 	// Get instruction addressing modes
-	n, i, x, b, p, _ := GetNIXBPEBits(instruction.Bytes)
+	n, i, x, b, p, _ := instruction.GetNIXBPEBits()
 	relativeAddressingMode, err := GetRelativeAdressingModes(b, p)
 	if err != nil {
 		// Invalid relative addressing

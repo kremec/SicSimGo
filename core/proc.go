@@ -7,119 +7,131 @@ import (
 )
 
 /*
-DEFINITIONS
-*/
-type Instruction struct {
-	Format InstructionFormat
-	Bytes  []byte
-	Opcode Opcode
-}
-
-/*
 DEBUG
 */
-const debugFetchNextInstruction bool = false
+const debugGetNextDisassemblyInstruction bool = false
 const debugExecuteNextInstruction bool = false
 
 /*
 OPERATIONS
 */
-func FetchNextInstruction(updatePC bool) Instruction {
+func GetNextDisassemblyInstruction(updatePC bool) (Instruction, error) {
 	pc := base.GetRegisterPC()
 
-	byte1 := base.GetByte(pc)
-	opcode := GetOpcode(byte1)
-
-	instructionFormat, err := GetInstructionFormat(byte1)
-	if err != nil {
-		// Invalid opcode
-		panic(err)
+	if len(Disassembly) == 0 {
+		return UnknownInstruction, ErrDisassemblyEmpty()
 	}
-	if debugFetchNextInstruction {
-		fmt.Printf("Fetch Next Instruction: Opcode %02X - %s\n", byte(opcode), opcode.String())
+	instruction, exists := Disassembly[pc]
+	// Instruction not found - disassembly incorrect
+	if !exists {
+		if debugGetNextDisassemblyInstruction {
+			fmt.Println("Instruction not found - incorrect disassembly")
+		}
+		// Delete all instructions after PC
+		for addr := range Disassembly {
+			if addr.Compare(pc) > 0 {
+				// Delete instructions below PC
+				delete(Disassembly, addr)
+			}
+		}
+
+		// Replace 1st instruction above PC (which now has max address) with its bytes until PC
+		maxAddr := units.Int24{0x00, 0x00, 0x00}
+		for addr := range Disassembly {
+			if addr.Compare(maxAddr) > 0 {
+				maxAddr = addr
+			}
+		}
+		var unknownBytes []byte
+		unknownBytesAddr := maxAddr
+		i := 0
+		for unknownBytesAddr.Compare(pc) < 0 {
+			unknownBytes = append(unknownBytes, Disassembly[maxAddr].Bytes[i])
+			i++
+			unknownBytesAddr = unknownBytesAddr.Add(units.Int24{0x00, 0x00, 0x01})
+		}
+		unknownBytesInstruction := Instruction{
+			Format:             InstructionUnknown,
+			Directive:          DirectiveBYTE,
+			Bytes:              unknownBytes,
+			InstructionAddress: maxAddr,
+		}
+		Disassembly[maxAddr] = unknownBytesInstruction
+
+		// Disassemble from PC to last instruction byte address
+		if debugGetNextDisassemblyInstruction {
+			fmt.Println("Disassembling code from PC to LastInstructionByteAddress:")
+		}
+		codeAfterPC := base.GetSlice(pc, LastInstructionByteAddress)
+		instructions, bytesFromIncompleteInstruction := GetInstructions(pc, codeAfterPC)
+		for address, instruction := range instructions {
+			if debugLoadProgram {
+				fmt.Printf("    Address: %s, Format: %s, Bytes: % X, Opcode: %s, Operand: %s\n", address.StringHex(), instruction.Format.String(), instruction.Bytes, instruction.Opcode.String(), instruction.Operand.StringHex())
+			}
+			Disassembly[address] = instruction
+		}
+		if len(bytesFromIncompleteInstruction) > 0 {
+			// Add incomplete instruction bytes to the end of Disassembly
+			addrLeftoverBytes := LastInstructionByteAddress
+			for i := 0; i < len(bytesFromIncompleteInstruction); i++ {
+				addrLeftoverBytes.Sub(units.Int24{0x00, 0x00, 0x01})
+			}
+			Disassembly[addrLeftoverBytes] = Instruction{
+				Format:             InstructionUnknown,
+				Bytes:              bytesFromIncompleteInstruction,
+				InstructionAddress: addrLeftoverBytes,
+			}
+		}
+
+		UpdateDisassemblyInstructionList()
+		UpdateProcState(base.GetRegisterPC())
+		return GetNextDisassemblyInstruction(updatePC)
 	}
-
-	instructionBytes := []byte{byte1}
-
-	if instructionFormat == InstructionFormat1 {
-		if updatePC {
+	if updatePC {
+		switch instruction.Format {
+		case InstructionFormat1:
 			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x01}))
-		}
-	} else if instructionFormat == InstructionFormat2 {
-		byte2 := base.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x01}))
-		instructionBytes = append(instructionBytes, byte2)
-
-		if updatePC {
+		case InstructionFormat2:
 			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x02}))
-		}
-	} else if instructionFormat == InstructionFormatSIC {
-		byte2 := base.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x01}))
-		byte3 := base.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x02}))
-		instructionBytes = append(instructionBytes, byte2)
-		instructionBytes = append(instructionBytes, byte3)
-
-		if updatePC {
+		case InstructionFormatSIC:
 			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x03}))
-		}
-	} else if instructionFormat == InstructionFormat34 {
-		byte2 := base.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x01}))
-		byte3 := base.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x02}))
-		instructionBytes = append(instructionBytes, byte2)
-		instructionBytes = append(instructionBytes, byte3)
-
-		instructionType := GetInstructionFormat34(byte2)
-		if instructionType == InstructionFormat3 {
-			instructionFormat = InstructionFormat3
-
-			if updatePC {
-				base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x03}))
-			}
-		} else {
-			instructionFormat = InstructionFormat4
-
-			byte4 := base.GetByte(pc.Add(units.Int24{0x00, 0x00, 0x03}))
-			instructionBytes = append(instructionBytes, byte4)
-
-			if updatePC {
-				base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x04}))
-			}
-		}
-	} else {
-		return Instruction{
-			Format: InstructionUnknown,
-			Bytes:  []byte{},
-			Opcode: 0x00,
+		case InstructionFormat3:
+			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x03}))
+		case InstructionFormat4:
+			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x04}))
 		}
 	}
 
-	return Instruction{
-		Format: instructionFormat,
-		Bytes:  instructionBytes,
-		Opcode: opcode,
+	// Update operand and address values
+	if instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4 {
+		operand, address := instruction.GetOperandAddress(base.GetRegisterPC())
+		instruction.Address = address
+		instruction.Operand = operand
 	}
+
+	return instruction, nil
 }
 
 func ExecuteNextInstruction() {
-	instruction := FetchNextInstruction(true)
+	instruction, err := GetNextDisassemblyInstruction(true)
+	if err != nil {
+		if err == ErrDisassemblyEmpty() {
+			return
+		}
+	}
+
+	instruction.Execute()
+	UpdateProcState(base.GetRegisterPC())
 
 	// halt J halt -> Stop execution
-	_, address := instruction.GetOperandAddress(base.GetRegisterPC())
-	pcOfInstruction := base.GetRegisterPC()
-	for i := 0; i < len(instruction.Bytes); i++ {
-		pcOfInstruction = pcOfInstruction.Sub(units.Int24{0x00, 0x00, 0x01})
-	}
 	if debugExecuteNextInstruction {
-		fmt.Printf("Check for HALT: %s : %s\n", address.StringHex(), pcOfInstruction.StringHex())
+		fmt.Printf("Check for HALT: %s : %s\n", instruction.InstructionAddress.StringHex(), base.GetRegisterPC().StringHex())
 	}
-	if instruction.Opcode == J && address.Compare(pcOfInstruction) == 0 {
+	if instruction.Opcode == J && instruction.InstructionAddress.Compare(base.GetRegisterPC()) == 0 {
 		if debugExecuteNextInstruction {
 			fmt.Println("HALT")
 		}
 		StopSim()
-	} else {
-		pc := base.GetRegisterPC()
-		UpdateProcState(instruction, pc)
+		return
 	}
-
-	instruction.Execute()
 }

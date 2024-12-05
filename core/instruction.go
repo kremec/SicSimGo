@@ -1,11 +1,40 @@
 package core
 
+import (
+	"sicsimgo/core/base"
+	"sicsimgo/core/units"
+)
+
 /*
 DEFINITIONS
 */
-type Opcode byte
-
 type InstructionFormat int
+type Opcode byte
+type Directive string
+
+type Instruction struct {
+	InstructionAddress units.Int24
+
+	Format    InstructionFormat
+	Bytes     []byte
+	Opcode    Opcode
+	Directive Directive
+
+	Address units.Int24
+	Operand units.Int24
+	R1, R2  base.RegisterId
+}
+
+const (
+	InstructionFormat1   InstructionFormat = 1
+	InstructionFormat2   InstructionFormat = 2
+	InstructionFormatSIC InstructionFormat = 0
+	InstructionFormat3   InstructionFormat = 3
+	InstructionFormat4   InstructionFormat = 4
+
+	InstructionFormat34 InstructionFormat = 34
+	InstructionUnknown  InstructionFormat = -1
+)
 
 const (
 	ADD    Opcode = 0x18
@@ -67,17 +96,6 @@ const (
 	TIX    Opcode = 0x2C
 	TIXR   Opcode = 0xB8
 	WD     Opcode = 0xDC
-)
-
-const (
-	InstructionFormat1   InstructionFormat = 1
-	InstructionFormat2   InstructionFormat = 2
-	InstructionFormatSIC InstructionFormat = 0
-	InstructionFormat3   InstructionFormat = 3
-	InstructionFormat4   InstructionFormat = 4
-
-	InstructionFormat34 InstructionFormat = 34
-	InstructionUnknown  InstructionFormat = -1
 )
 
 var opcodesFormat1 = map[Opcode]InstructionFormat{
@@ -146,6 +164,15 @@ var opcodesFormat34 = map[Opcode]InstructionFormat{
 	WD:    InstructionFormat34,
 }
 
+const (
+	DirectiveNone Directive = ""
+	DirectiveBYTE Directive = "BYTE"
+)
+
+var UnknownInstruction Instruction = Instruction{
+	Format: InstructionUnknown,
+}
+
 /*
 OPERATIONS
 */
@@ -203,6 +230,10 @@ func (instruction Instruction) IsStoreInstruction() bool {
 		return true
 	}
 	return false
+}
+
+func (instruction Instruction) IsFormatSIC34() bool {
+	return instruction.Format == InstructionFormatSIC || instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4
 }
 
 /*

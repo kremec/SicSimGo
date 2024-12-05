@@ -10,6 +10,7 @@ const (
 )
 
 type Int24 [3]byte
+type Int24Slice []Int24
 
 func (i Int24) ToUint32() uint32 {
 	return uint32(i[0])<<16 | uint32(i[1])<<8 | uint32(i[2])
@@ -178,6 +179,15 @@ func (i Int24) Compare(other Int24) int {
 		}
 	}
 	return 0 // i == other
+}
+func (s Int24Slice) Len() int {
+	return len(s)
+}
+func (s Int24Slice) Less(i, j int) bool {
+	return s[i].Compare(s[j]) == -1
+}
+func (s Int24Slice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
 /*

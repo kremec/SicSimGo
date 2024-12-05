@@ -100,6 +100,13 @@ func SetFloat(addressBytes units.Int24, value units.Float48) {
 	memory.Data[address+5] = value[5]
 }
 
+func GetSlice(startAddress units.Int24, endAddress units.Int24) []byte {
+	start := toAddress(startAddress)
+	end := toAddress(endAddress)
+
+	return memory.Data[start:end]
+}
+
 func ResetMemory() {
 	memory.Data = make([]byte, MEMORY_SIZE)
 }

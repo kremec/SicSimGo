@@ -1,18 +1,20 @@
 ***** Section <default> *****
-Stats: size=58  blocks=58  symbols=8  literals=0  relocations=0
+Stats: size=62  blocks=62  symbols=10  literals=0  relocations=0
 Blocks
     name        start   size  #ins #dir #sto
-    <default>   00000  0003A    15    6    1
+    <default>   00000  0003E    16    7    1
 Symbols
     name        hex       dec  scope     kind      type      description
-    halt     00001C        28  local     relative  code      label
-    outdat   000037        55  local     relative  data      label
+    halt     000020        32  local     relative  code      label
+    io       00001A        26  local     relative  code      label
+    outdat   00003B        59  local     relative  data      label
     prog     000000         0  exported  relative  code      label
-    stdin    000034        52  local     relative  data      label
-    subrt    00001F        31  local     relative  code      label
-    x        00002B        43  local     relative  data      label
-    y        00002E        46  local     relative  data      label
-    z        000031        49  local     relative  data      label
+    stdin    000038        56  local     relative  data      label
+    subrt    000023        35  local     relative  code      label
+    testb    000019        25  local     relative  data      label
+    x        00002F        47  local     relative  data      label
+    y        000032        50  local     relative  data      label
+    z        000035        53  local     relative  data      label
 Literals
     label   definition
 Relocations

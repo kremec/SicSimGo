@@ -13,6 +13,10 @@ func ProcInfo(
 ) D {
 
 	var currentInstructionSize int = len(core.CurrentProcState.Instruction.Bytes)
+	if currentInstructionSize == 0 {
+		return layout.Dimensions{}
+	}
+
 	var currentInstructionHex string
 	for i := 0; i < currentInstructionSize; i++ {
 		currentInstructionHex += fmt.Sprintf("%02X ", core.CurrentProcState.Instruction.Bytes[i])
@@ -101,14 +105,14 @@ func ProcInfo(
 		}),
 		layout.Rigid(func(gtx C) D {
 			if instructionFormat34 {
-				return material.Body1(theme, "Address: "+core.CurrentProcState.Address.StringHex()).Layout(gtx)
+				return material.Body1(theme, "Address: "+core.CurrentProcState.Instruction.Address.StringHex()).Layout(gtx)
 			} else {
 				return layout.Dimensions{}
 			}
 		}),
 		layout.Rigid(func(gtx C) D {
 			if instructionFormat34 && !core.CurrentProcState.Instruction.IsJumpInstruction() {
-				return material.Body1(theme, "Operand: "+core.CurrentProcState.Operand.StringHex()).Layout(gtx)
+				return material.Body1(theme, "Operand: "+core.CurrentProcState.Instruction.Operand.StringHex()).Layout(gtx)
 			} else {
 				return layout.Dimensions{}
 			}
