@@ -144,6 +144,7 @@ func LoadProgram(file *os.File) string {
 		}
 	}
 
+	UpdateDisassemblyInstructionAdressOperands()
 	UpdateDisassemblyInstructionList()
 	UpdateProcState(base.GetRegisterPC())
 

@@ -131,7 +131,7 @@ func executeFormat2(instruction Instruction) error {
 }
 
 func executeFormatSIC34(instruction Instruction) error {
-	operand, address := instruction.GetOperandAddress(base.GetRegisterPC())
+	operand, address, _, _, _ := instruction.GetOperandAddress(base.GetRegisterPC())
 
 	switch instruction.Opcode {
 	case ADD:

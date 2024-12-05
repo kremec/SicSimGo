@@ -23,6 +23,10 @@ type Instruction struct {
 	Address units.Int24
 	Operand units.Int24
 	R1, R2  base.RegisterId
+
+	RelativeAddressingMode RelativeAddressingMode
+	IndexAddressingMode    IndexAddressingMode
+	AbsoluteAddressingMode AbsoluteAddressingMode
 }
 
 const (

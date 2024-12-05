@@ -87,26 +87,28 @@ func GetNextDisassemblyInstruction(updatePC bool) (Instruction, error) {
 		UpdateProcState(base.GetRegisterPC())
 		return GetNextDisassemblyInstruction(updatePC)
 	}
+
+	switch instruction.Format {
+	case InstructionFormat1:
+		pc = pc.Add(units.Int24{0x00, 0x00, 0x01})
+	case InstructionFormat2:
+		pc = pc.Add(units.Int24{0x00, 0x00, 0x02})
+	case InstructionFormatSIC:
+		pc = pc.Add(units.Int24{0x00, 0x00, 0x03})
+	case InstructionFormat3:
+		pc = pc.Add(units.Int24{0x00, 0x00, 0x03})
+	case InstructionFormat4:
+		pc = pc.Add(units.Int24{0x00, 0x00, 0x04})
+	}
 	if updatePC {
-		switch instruction.Format {
-		case InstructionFormat1:
-			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x01}))
-		case InstructionFormat2:
-			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x02}))
-		case InstructionFormatSIC:
-			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x03}))
-		case InstructionFormat3:
-			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x03}))
-		case InstructionFormat4:
-			base.SetRegisterPC(pc.Add(units.Int24{0x00, 0x00, 0x04}))
-		}
+		base.SetRegisterPC(pc)
 	}
 
 	// Update operand and address values
 	if instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4 {
-		operand, address := instruction.GetOperandAddress(base.GetRegisterPC())
-		instruction.Address = address
+		operand, address, _, _, _ := instruction.GetOperandAddress(pc)
 		instruction.Operand = operand
+		instruction.Address = address
 	}
 
 	return instruction, nil

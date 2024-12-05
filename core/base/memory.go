@@ -107,6 +107,29 @@ func GetSlice(startAddress units.Int24, endAddress units.Int24) []byte {
 	return memory.Data[start:end]
 }
 
+func GetSlice16(startAddress units.Int24) []byte {
+	start := toAddress(startAddress)
+
+	return []byte{
+		memory.Data[start],
+		memory.Data[start+1],
+		memory.Data[start+2],
+		memory.Data[start+3],
+		memory.Data[start+4],
+		memory.Data[start+5],
+		memory.Data[start+6],
+		memory.Data[start+7],
+		memory.Data[start+8],
+		memory.Data[start+9],
+		memory.Data[start+10],
+		memory.Data[start+11],
+		memory.Data[start+12],
+		memory.Data[start+13],
+		memory.Data[start+14],
+		memory.Data[start+15],
+	}
+}
+
 func ResetMemory() {
 	memory.Data = make([]byte, MEMORY_SIZE)
 }
@@ -118,26 +141,4 @@ func StringAddress(addressBytes units.Int24) string {
 	address := toAddress(addressBytes)
 
 	return fmt.Sprintf("%05X", address&0xFFFFF)
-}
-func String16Bytes(addressBytes units.Int24) string {
-	address := toAddress(addressBytes)
-
-	return fmt.Sprintf("%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-		memory.Data[address],
-		memory.Data[address+1],
-		memory.Data[address+2],
-		memory.Data[address+3],
-		memory.Data[address+4],
-		memory.Data[address+5],
-		memory.Data[address+6],
-		memory.Data[address+7],
-		memory.Data[address+8],
-		memory.Data[address+9],
-		memory.Data[address+10],
-		memory.Data[address+11],
-		memory.Data[address+12],
-		memory.Data[address+13],
-		memory.Data[address+14],
-		memory.Data[address+15],
-	)
 }

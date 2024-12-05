@@ -130,17 +130,28 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]Inst
 			relativeAddress = relativeAddress.Add(units.Int24{0x00, 0x00, 0x01})
 		}
 
-		nextInstructionAddress := codeAddress.Add(relativeAddress)
-		if instructionFormatFromOpcode == InstructionFormat34 {
-			operand, address := instruction.GetOperandAddress(nextInstructionAddress)
-			instruction.Address = address
-			instruction.Operand = operand
-		}
-
 		disassemblyInstructions[instruction.InstructionAddress] = instruction
 	}
 
 	return disassemblyInstructions, []byte{}
+}
+
+func UpdateDisassemblyInstructionAdressOperands() {
+	for address, instruction := range Disassembly {
+		nextInstructionAddress := address
+		for i := 0; i < len(instruction.Bytes); i++ {
+			nextInstructionAddress = nextInstructionAddress.Add(units.Int24{0x00, 0x00, 0x01})
+		}
+		if instruction.IsFormatSIC34() {
+			operand, address, relativeAddressingMode, indexAddressingMode, absoluteAddressingMode := instruction.GetOperandAddress(nextInstructionAddress)
+			instruction.Operand = operand
+			instruction.Address = address
+			instruction.RelativeAddressingMode = relativeAddressingMode
+			instruction.IndexAddressingMode = indexAddressingMode
+			instruction.AbsoluteAddressingMode = absoluteAddressingMode
+		}
+		Disassembly[address] = instruction
+	}
 }
 
 func UpdateDisassemblyInstructionList() {

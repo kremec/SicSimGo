@@ -31,7 +31,7 @@ const (
 /*
 DEBUG
 */
-const debugGetOperandAddress bool = false
+const debugGetOperandAddress bool = true
 
 /*
 OPERATIONS
@@ -88,11 +88,11 @@ func (instruction Instruction) GetNIXBPEBits() (n, i, x, b, p, e bool) {
 	return n, i, x, b, p, e
 }
 
-func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, units.Int24) {
+func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, units.Int24, RelativeAddressingMode, IndexAddressingMode, AbsoluteAddressingMode) {
 
 	if instruction.Format != InstructionFormatSIC && instruction.Format != InstructionFormat3 && instruction.Format != InstructionFormat4 {
 		// Invalid instruction format
-		return units.Int24{}, units.Int24{}
+		return units.Int24{}, units.Int24{}, UnkownRelativeAddressing, IndexAddressingMode(false), SICAbsoluteAddressing
 	}
 
 	var address units.Int24
@@ -103,7 +103,7 @@ func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, u
 	relativeAddressingMode, err := GetRelativeAdressingModes(b, p)
 	if err != nil {
 		// Invalid relative addressing
-		return units.Int24{}, units.Int24{}
+		return units.Int24{}, units.Int24{}, UnkownRelativeAddressing, IndexAddressingMode(false), SICAbsoluteAddressing
 	}
 	absoluteAddressingMode := GetAbsoluteAdressingModes(n, i)
 	indexAddressingMode := GetIndexAdressingModes(x)
@@ -175,7 +175,7 @@ func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, u
 		}
 	}
 
-	return operand, address
+	return operand, address, relativeAddressingMode, indexAddressingMode, absoluteAddressingMode
 }
 
 func GetR1R2FromByte(byte2 byte) (base.RegisterId, base.RegisterId) {
