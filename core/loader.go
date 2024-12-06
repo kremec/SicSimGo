@@ -27,7 +27,7 @@ var debugLoadProgram bool = false
 /*
 OPERATIONS
 */
-func OpenObjectFile() string {
+func OpenLoadObjFile() string {
 	filename, err := dialog.File().Filter("Object files", "obj").Title("Select object file").Load()
 	if err != nil {
 		return internal.DefaultWindowTitle

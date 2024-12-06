@@ -14,8 +14,8 @@ type Device byte
 /*
 DEBUG
 */
-const debugRead bool = true
-const debugWrite bool = true
+const debugRead bool = false
+const debugWrite bool = false
 
 /*
 OPERATIONS

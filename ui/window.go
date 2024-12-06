@@ -5,7 +5,6 @@ import (
 	"sicsimgo/core"
 	"sicsimgo/internal"
 	"sicsimgo/ui/components"
-	"sicsimgo/ui/events"
 
 	"gioui.org/app"
 	"gioui.org/font/gofont"
@@ -16,7 +15,6 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"gioui.org/x/component"
 )
 
 type (
@@ -41,6 +39,32 @@ func loadFont(theme *material.Theme) error {
 	return nil
 }
 
+func LoadProgramObj(w *app.Window) {
+	core.ResetSim()
+
+	go func() {
+		programName := core.OpenLoadObjFile()
+		internal.SetWindowTitle(programName, w)
+	}()
+}
+func ExecuteStep() {
+	go core.ExecuteNextInstruction()
+}
+func ExecuteStartStop() {
+	core.SimExecuteState = !core.SimExecuteState
+	go func() {
+		for core.SimExecuteState == core.ExecuteStartState {
+			core.ExecuteNextInstruction()
+		}
+	}()
+}
+func Reset(w *app.Window) {
+	internal.ResetWindowTitle(w)
+	go func() {
+		core.ResetSim()
+	}()
+}
+
 func DrawWindow(w *app.Window) error {
 	var ops op.Ops
 
@@ -59,6 +83,16 @@ func DrawWindow(w *app.Window) error {
 		List: layout.List{Axis: layout.Vertical},
 	}
 
+	mainSplit := Split{
+		Ratio: -0.2,
+	}
+	vSplitLeft := Split{
+		Ratio: -0.2,
+	}
+	vSplitRight := Split{
+		Ratio: -0.2,
+	}
+
 	for {
 		switch e := w.Event().(type) {
 
@@ -66,32 +100,19 @@ func DrawWindow(w *app.Window) error {
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
 
-			events.HandleGlobalEvents(gtx, theme)
+			HandleGlobalEvents(gtx, theme, w)
 
 			if LoadProgramButton.Clicked(gtx) {
-				core.ResetSim()
-
-				go func() {
-					programName := core.OpenObjectFile()
-					internal.SetWindowTitle(programName, w)
-				}()
+				LoadProgramObj(w)
 			}
 			if ExecuteStepButton.Clicked(gtx) {
-				go core.ExecuteNextInstruction()
+				ExecuteStep()
 			}
 			if ExecuteStartStopButton.Clicked(gtx) {
-				core.SimExecuteState = !core.SimExecuteState
-				go func() {
-					for core.SimExecuteState == core.ExecuteStartState {
-						core.ExecuteNextInstruction()
-					}
-				}()
+				ExecuteStartStop()
 			}
 			if ResetSimButton.Clicked(gtx) {
-				internal.ResetWindowTitle(w)
-				go func() {
-					core.ResetSim()
-				}()
+				Reset(w)
 			}
 
 			layout.Flex{
@@ -103,17 +124,10 @@ func DrawWindow(w *app.Window) error {
 				}),
 
 				layout.Flexed(1, func(gtx C) D {
-					return layout.Flex{
-						Axis:      layout.Horizontal,
-						Alignment: layout.Middle,
-					}.Layout(gtx,
-						layout.Flexed(0.4, func(gtx C) D {
-
-							return layout.Flex{
-								Axis:      layout.Vertical,
-								Alignment: layout.Middle,
-							}.Layout(gtx,
-								layout.Rigid(func(gtx C) D {
+					return mainSplit.HLayout(gtx,
+						func(gtx C) D {
+							return vSplitLeft.VLayout(gtx,
+								func(gtx C) D {
 									return layout.Flex{
 										Axis:      layout.Vertical,
 										Alignment: layout.Middle,
@@ -141,11 +155,8 @@ func DrawWindow(w *app.Window) error {
 											})
 										}),
 									)
-								}),
-								layout.Rigid(func(gtx C) D {
-									return component.Divider(theme).Layout(gtx)
-								}),
-								layout.Flexed(1, func(gtx C) D {
+								},
+								func(gtx C) D {
 									return layout.Inset{
 										Top:    unit.Dp(0),
 										Bottom: unit.Dp(5),
@@ -154,16 +165,12 @@ func DrawWindow(w *app.Window) error {
 									}.Layout(gtx, func(gtx C) D {
 										return components.Disassembly(&gtx, theme, &instructionList)
 									})
-								}),
+								},
 							)
-						}),
-
-						layout.Flexed(0.6, func(gtx C) D {
-							return layout.Flex{
-								Axis:      layout.Vertical,
-								Alignment: layout.Middle,
-							}.Layout(gtx,
-								layout.Flexed(0.3, func(gtx C) D {
+						},
+						func(gtx C) D {
+							return vSplitRight.VLayout(gtx,
+								func(gtx C) D {
 									return layout.Inset{
 										Top:    unit.Dp(5),
 										Bottom: unit.Dp(0),
@@ -172,11 +179,8 @@ func DrawWindow(w *app.Window) error {
 									}.Layout(gtx, func(gtx C) D {
 										return material.H6(theme, "Watch").Layout(gtx)
 									})
-								}),
-								layout.Rigid(func(gtx C) D {
-									return component.Divider(theme).Layout(gtx)
-								}),
-								layout.Flexed(0.7, func(gtx C) D {
+								},
+								func(gtx C) D {
 									return layout.Inset{
 										Top:    unit.Dp(0),
 										Bottom: unit.Dp(5),
@@ -185,9 +189,9 @@ func DrawWindow(w *app.Window) error {
 									}.Layout(gtx, func(gtx C) D {
 										return components.Memory(&gtx, theme, &memoryList)
 									})
-								}),
+								},
 							)
-						}),
+						},
 					)
 				}),
 			)

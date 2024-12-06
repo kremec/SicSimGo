@@ -30,7 +30,7 @@ var CurrentProcState ProcState = ProcState{}
 /*
 DEBUG
 */
-var debugUpdateProcState bool = true
+var debugUpdateProcState bool = false
 
 /*
 OPERATIONS
@@ -75,7 +75,9 @@ func StopSim() {
 
 func ResetSim() {
 	SimExecuteState = ExecuteStopState
+	CurrentProcState = ProcState{}
 	Disassembly = make(map[units.Int24]Instruction)
+	InstructionList = make([]Instruction, 0)
 	base.ResetRegisters()
 	base.ResetMemory()
 }

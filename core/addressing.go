@@ -31,7 +31,7 @@ const (
 /*
 DEBUG
 */
-const debugGetOperandAddress bool = true
+const debugGetOperandAddress bool = false
 
 /*
 OPERATIONS
