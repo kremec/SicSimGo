@@ -117,7 +117,33 @@ func executeFormat2(instruction Instruction) error {
 		r2Id.SetRegister(r1)
 	// TODO: SHIFT OPERATIONS
 	case SHIFTL:
+		shift, err := r1Id.GetRegister()
+		if err != nil {
+			return err
+		}
+		shiftNum, err := r2Id.GetRegister()
+		if err != nil {
+			return err
+		}
+		i := units.Int24{}
+		for i.Compare(shiftNum) < 0 {
+			shift = shift.ShiftL()
+			i = i.Add(units.Int24{0x00, 0x00, 0x01})
+		}
 	case SHIFTR:
+		shift, err := r1Id.GetRegister()
+		if err != nil {
+			return err
+		}
+		shiftNum, err := r2Id.GetRegister()
+		if err != nil {
+			return err
+		}
+		i := units.Int24{}
+		for i.Compare(shiftNum) < 0 {
+			shift = shift.ShiftR()
+			i = i.Add(units.Int24{0x00, 0x00, 0x01})
+		}
 	case SUBR:
 		r2Id.SetRegister(r2.Sub(r1))
 	// TODO: SYSCALL

@@ -167,6 +167,25 @@ func (i Int24) Not() Int24 {
 }
 
 /*
+BITWISE OPERATORS
+*/
+func (i Int24) ShiftL() Int24 {
+	var result Int24
+	result[0] = (i[0] << 1) | (i[2] >> 7)
+	result[1] = (i[1] << 1) | (i[0] >> 7)
+	result[2] = (i[2] << 1) | (i[1] >> 7)
+	return result
+}
+
+func (i Int24) ShiftR() Int24 {
+	var result Int24
+	result[0] = (i[0] >> 1) | (i[2] << 7)
+	result[1] = (i[1] >> 1) | (i[0] << 7)
+	result[2] = (i[2] >> 1) | (i[1] << 7)
+	return result
+}
+
+/*
 LOGICAL OPERATORS
 */
 func (i Int24) Compare(other Int24) int {
