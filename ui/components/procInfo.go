@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"sicsimgo/core"
+	"sicsimgo/core/proc"
 
 	"gioui.org/layout"
 	"gioui.org/widget/material"
@@ -28,7 +29,7 @@ func ProcInfo(
 
 	var currentInstructionOpcode string = fmt.Sprintf("%02X", core.CurrentProcState.Instruction.Bytes[0])
 
-	instructionFormat34 := core.CurrentProcState.Instruction.Format == core.InstructionFormat3 || core.CurrentProcState.Instruction.Format == core.InstructionFormat4
+	instructionFormat34 := core.CurrentProcState.Instruction.Format == proc.InstructionFormat3 || core.CurrentProcState.Instruction.Format == proc.InstructionFormat4
 	var currentBitsNixbpe string
 
 	if instructionFormat34 {

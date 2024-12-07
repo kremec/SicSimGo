@@ -1,4 +1,4 @@
-package core
+package loader
 
 import (
 	"bufio"
@@ -146,7 +146,6 @@ func LoadProgram(file *os.File) string {
 
 	UpdateDisassemblyInstructionAdressOperands()
 	UpdateDisassemblyInstructionList()
-	UpdateProcState(base.GetRegisterPC())
 
 	if debugLoadProgram {
 		fmt.Printf("Last instruction byte address: %s\n", LastInstructionByteAddress.StringHex())

@@ -3,6 +3,8 @@ package core
 import (
 	"fmt"
 	"sicsimgo/core/base"
+	"sicsimgo/core/loader"
+	"sicsimgo/core/proc"
 	"sicsimgo/core/units"
 )
 
@@ -15,29 +17,29 @@ const debugExecuteNextInstruction bool = false
 /*
 OPERATIONS
 */
-func GetNextDisassemblyInstruction(updatePC bool) (Instruction, error) {
+func GetNextDisassemblyInstruction(updatePC bool) (proc.Instruction, error) {
 	pc := base.GetRegisterPC()
 
-	if len(Disassembly) == 0 {
-		return UnknownInstruction, ErrDisassemblyEmpty()
+	if len(loader.Disassembly) == 0 {
+		return proc.UnknownInstruction, loader.ErrDisassemblyEmpty()
 	}
-	instruction, exists := Disassembly[pc]
+	instruction, exists := loader.Disassembly[pc]
 	// Instruction not found - disassembly incorrect
 	if !exists {
 		if debugGetNextDisassemblyInstruction {
 			fmt.Println("Instruction not found - incorrect disassembly")
 		}
 		// Delete all instructions after PC
-		for addr := range Disassembly {
+		for addr := range loader.Disassembly {
 			if addr.Compare(pc) > 0 {
 				// Delete instructions below PC
-				delete(Disassembly, addr)
+				delete(loader.Disassembly, addr)
 			}
 		}
 
 		// Replace 1st instruction above PC (which now has max address) with its bytes until PC
 		maxAddr := units.Int24{0x00, 0x00, 0x00}
-		for addr := range Disassembly {
+		for addr := range loader.Disassembly {
 			if addr.Compare(maxAddr) > 0 {
 				maxAddr = addr
 			}
@@ -46,58 +48,58 @@ func GetNextDisassemblyInstruction(updatePC bool) (Instruction, error) {
 		unknownBytesAddr := maxAddr
 		i := 0
 		for unknownBytesAddr.Compare(pc) < 0 {
-			unknownBytes = append(unknownBytes, Disassembly[maxAddr].Bytes[i])
+			unknownBytes = append(unknownBytes, loader.Disassembly[maxAddr].Bytes[i])
 			i++
 			unknownBytesAddr = unknownBytesAddr.Add(units.Int24{0x00, 0x00, 0x01})
 		}
-		unknownBytesInstruction := Instruction{
-			Format:             InstructionUnknown,
-			Directive:          DirectiveBYTE,
+		unknownBytesInstruction := proc.Instruction{
+			Format:             proc.InstructionUnknown,
+			Directive:          proc.DirectiveBYTE,
 			Bytes:              unknownBytes,
 			InstructionAddress: maxAddr,
 		}
-		Disassembly[maxAddr] = unknownBytesInstruction
+		loader.Disassembly[maxAddr] = unknownBytesInstruction
 
 		// Disassemble from PC to last instruction byte address
 		if debugGetNextDisassemblyInstruction {
 			fmt.Println("Disassembling code from PC to LastInstructionByteAddress:")
 		}
-		codeAfterPC := base.GetSlice(pc, LastInstructionByteAddress)
-		instructions, bytesFromIncompleteInstruction := GetInstructions(pc, codeAfterPC)
+		codeAfterPC := base.GetSlice(pc, loader.LastInstructionByteAddress)
+		instructions, bytesFromIncompleteInstruction := loader.GetInstructions(pc, codeAfterPC)
 		for address, instruction := range instructions {
-			if debugLoadProgram {
+			if debugGetNextDisassemblyInstruction {
 				fmt.Printf("    Address: %s, Format: %s, Bytes: % X, Opcode: %s, Operand: %s\n", address.StringHex(), instruction.Format.String(), instruction.Bytes, instruction.Opcode.String(), instruction.Operand.StringHex())
 			}
-			Disassembly[address] = instruction
+			loader.Disassembly[address] = instruction
 		}
 		if len(bytesFromIncompleteInstruction) > 0 {
 			// Add incomplete instruction bytes to the end of Disassembly
-			addrLeftoverBytes := LastInstructionByteAddress
+			addrLeftoverBytes := loader.LastInstructionByteAddress
 			for i := 0; i < len(bytesFromIncompleteInstruction); i++ {
 				addrLeftoverBytes.Sub(units.Int24{0x00, 0x00, 0x01})
 			}
-			Disassembly[addrLeftoverBytes] = Instruction{
-				Format:             InstructionUnknown,
+			loader.Disassembly[addrLeftoverBytes] = proc.Instruction{
+				Format:             proc.InstructionUnknown,
 				Bytes:              bytesFromIncompleteInstruction,
 				InstructionAddress: addrLeftoverBytes,
 			}
 		}
 
-		UpdateDisassemblyInstructionList()
+		loader.UpdateDisassemblyInstructionList()
 		UpdateProcState(base.GetRegisterPC())
 		return GetNextDisassemblyInstruction(updatePC)
 	}
 
 	switch instruction.Format {
-	case InstructionFormat1:
+	case proc.InstructionFormat1:
 		pc = pc.Add(units.Int24{0x00, 0x00, 0x01})
-	case InstructionFormat2:
+	case proc.InstructionFormat2:
 		pc = pc.Add(units.Int24{0x00, 0x00, 0x02})
-	case InstructionFormatSIC:
+	case proc.InstructionFormatSIC:
 		pc = pc.Add(units.Int24{0x00, 0x00, 0x03})
-	case InstructionFormat3:
+	case proc.InstructionFormat3:
 		pc = pc.Add(units.Int24{0x00, 0x00, 0x03})
-	case InstructionFormat4:
+	case proc.InstructionFormat4:
 		pc = pc.Add(units.Int24{0x00, 0x00, 0x04})
 	}
 	if updatePC {
@@ -105,7 +107,7 @@ func GetNextDisassemblyInstruction(updatePC bool) (Instruction, error) {
 	}
 
 	// Update operand and address values
-	if instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4 {
+	if instruction.Format == proc.InstructionFormat3 || instruction.Format == proc.InstructionFormat4 {
 		operand, address, _, _, _ := instruction.GetOperandAddress(pc)
 		instruction.Operand = operand
 		instruction.Address = address
@@ -117,7 +119,7 @@ func GetNextDisassemblyInstruction(updatePC bool) (Instruction, error) {
 func ExecuteNextInstruction() {
 	instruction, err := GetNextDisassemblyInstruction(true)
 	if err != nil {
-		if err == ErrDisassemblyEmpty() {
+		if err == loader.ErrDisassemblyEmpty() {
 			return
 		}
 	}
@@ -129,7 +131,7 @@ func ExecuteNextInstruction() {
 	if debugExecuteNextInstruction {
 		fmt.Printf("Check for HALT: %s : %s\n", instruction.InstructionAddress.StringHex(), base.GetRegisterPC().StringHex())
 	}
-	if instruction.Opcode == J && instruction.InstructionAddress.Compare(base.GetRegisterPC()) == 0 {
+	if instruction.Opcode == proc.J && instruction.InstructionAddress.Compare(base.GetRegisterPC()) == 0 {
 		if debugExecuteNextInstruction {
 			fmt.Println("HALT")
 		}

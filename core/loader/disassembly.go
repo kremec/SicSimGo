@@ -1,7 +1,8 @@
-package core
+package loader
 
 import (
 	"fmt"
+	"sicsimgo/core/proc"
 	"sicsimgo/core/units"
 	"sort"
 )
@@ -9,8 +10,8 @@ import (
 /*
 IMPLEMENTATION
 */
-var Disassembly map[units.Int24]Instruction
-var InstructionList []Instruction
+var Disassembly map[units.Int24]proc.Instruction
+var InstructionList []proc.Instruction
 
 /*
 DEBUG
@@ -20,23 +21,23 @@ const debugGetDisassemblyInstructionsFromTextRecord bool = false
 /*
 OPERATIONS
 */
-func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]Instruction, []byte) {
-	disassemblyInstructions := make(map[units.Int24]Instruction)
+func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]proc.Instruction, []byte) {
+	disassemblyInstructions := make(map[units.Int24]proc.Instruction)
 
 	byteIndex := 0
 	relativeAddress := units.Int24{}
 	for byteIndex < len(code) {
-		instruction := Instruction{}
+		instruction := proc.Instruction{}
 
 		if debugGetDisassemblyInstructionsFromTextRecord {
 			fmt.Printf("Looking at byte index %d\n", byteIndex)
 		}
 
 		byte1 := code[byteIndex]
-		opcode := GetOpcode(byte1)
+		opcode := proc.GetOpcode(byte1)
 		instruction.Opcode = opcode
 
-		instructionFormatFromOpcode, err := GetInstructionFormat(byte1)
+		instructionFormatFromOpcode, err := proc.GetInstructionFormat(byte1)
 		if err != nil {
 			// Invalid opcode, perhaps data between instruction bytes
 			if debugGetDisassemblyInstructionsFromTextRecord {
@@ -44,11 +45,11 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]Inst
 			}
 
 			// Add byte as data to instructions and continue to next byte in code
-			instruction := Instruction{
+			instruction := proc.Instruction{
 				InstructionAddress: codeAddress.Add(relativeAddress),
-				Format:             InstructionUnknown,
+				Format:             proc.InstructionUnknown,
 				Bytes:              []byte{byte1},
-				Directive:          DirectiveBYTE,
+				Directive:          proc.DirectiveBYTE,
 			}
 
 			disassemblyInstructions[instruction.InstructionAddress] = instruction
@@ -64,19 +65,19 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]Inst
 		}
 
 		instructionBytes := []byte{byte1}
-		if instructionFormatFromOpcode == InstructionFormat2 {
+		if instructionFormatFromOpcode == proc.InstructionFormat2 {
 			// Check for incomplete instruction
 			if (byteIndex + 1) >= len(code) {
 				return disassemblyInstructions, []byte{byte1}
 			}
 			byte2 := code[byteIndex+1]
 
-			r1, r2 := GetR1R2FromByte(byte2)
+			r1, r2 := proc.GetR1R2FromByte(byte2)
 			instruction.R1 = r1
 			instruction.R2 = r2
 
 			instructionBytes = append(instructionBytes, byte2)
-		} else if instructionFormatFromOpcode == InstructionFormatSIC {
+		} else if instructionFormatFromOpcode == proc.InstructionFormatSIC {
 			// Check for incomplete instruction
 			if (byteIndex + 1) >= len(code) {
 				return disassemblyInstructions, []byte{byte1}
@@ -89,7 +90,7 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]Inst
 
 			instructionBytes = append(instructionBytes, byte2)
 			instructionBytes = append(instructionBytes, byte3)
-		} else if instructionFormatFromOpcode == InstructionFormat34 {
+		} else if instructionFormatFromOpcode == proc.InstructionFormat34 {
 			// Check for incomplete instruction
 			if (byteIndex + 1) >= len(code) {
 				return disassemblyInstructions, []byte{byte1}
@@ -103,10 +104,10 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]Inst
 			instructionBytes = append(instructionBytes, byte2)
 			instructionBytes = append(instructionBytes, byte3)
 
-			instructionType := GetInstructionFormat34(byte2)
-			if instructionType == InstructionFormat3 {
-				instruction.Format = InstructionFormat3
-			} else if instructionType == InstructionFormat4 {
+			instructionType := proc.GetInstructionFormat34(byte2)
+			if instructionType == proc.InstructionFormat3 {
+				instruction.Format = proc.InstructionFormat3
+			} else if instructionType == proc.InstructionFormat4 {
 				// Check for incomplete instruction
 				if (byteIndex + 3) >= len(code) {
 					return disassemblyInstructions, []byte{byte1}
@@ -114,7 +115,7 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]Inst
 				byte4 := code[byteIndex+3]
 
 				instructionBytes = append(instructionBytes, byte4)
-				instruction.Format = InstructionFormat4
+				instruction.Format = proc.InstructionFormat4
 			}
 		}
 		instruction.Bytes = instructionBytes
@@ -161,10 +162,15 @@ func UpdateDisassemblyInstructionList() {
 	}
 	sort.Sort(adresses)
 
-	instructionList := make([]Instruction, 0, len(Disassembly))
+	instructionList := make([]proc.Instruction, 0, len(Disassembly))
 	for _, key := range adresses {
 		instructionList = append(instructionList, Disassembly[key])
 	}
 
 	InstructionList = instructionList
+}
+
+func ResetDissasembly() {
+	Disassembly = make(map[units.Int24]proc.Instruction)
+	InstructionList = make([]proc.Instruction, 0)
 }

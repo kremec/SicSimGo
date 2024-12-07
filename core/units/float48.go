@@ -8,7 +8,7 @@ type Float48 [6]byte
 STRING
 */
 func (f Float48) StringDec() string {
-	return fmt.Sprintf("TODO") // TODO
+	return fmt.Sprintf("TODO: FLOAT") // TODO: FLOAT
 }
 func (f Float48) StringHex() string {
 	return fmt.Sprintf("%02X %02X %02X %02X %02X %02X", f[0], f[1], f[2], f[3], f[4], f[5])

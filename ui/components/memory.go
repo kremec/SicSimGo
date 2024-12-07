@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"sicsimgo/core"
 	"sicsimgo/core/base"
+	"sicsimgo/core/proc"
 	"sicsimgo/core/units"
 
 	"gioui.org/layout"
@@ -135,7 +136,7 @@ func Memory(gtx *layout.Context, theme *material.Theme, memoryList *widget.List)
 
 			// Operand address selection adresses
 			operandAddresses := []units.Int24{}
-			if core.CurrentProcState.Instruction.IsFormatSIC34() && core.CurrentProcState.Instruction.AbsoluteAddressingMode != core.ImmediateAbsoluteAddressing {
+			if core.CurrentProcState.Instruction.IsFormatSIC34() && core.CurrentProcState.Instruction.AbsoluteAddressingMode != proc.ImmediateAbsoluteAddressing {
 				operandAddress := core.CurrentProcState.Instruction.Address
 				j = units.Int24{}
 				for i := 0; i < 3; i++ {

@@ -3,6 +3,8 @@ package core
 import (
 	"fmt"
 	"sicsimgo/core/base"
+	"sicsimgo/core/loader"
+	"sicsimgo/core/proc"
 	"sicsimgo/core/units"
 )
 
@@ -12,7 +14,7 @@ DEFINITIONS
 type ExecuteState bool
 
 type ProcState struct {
-	Instruction      Instruction
+	Instruction      proc.Instruction
 	N, I, X, B, P, E bool
 }
 
@@ -36,7 +38,7 @@ var debugUpdateProcState bool = false
 OPERATIONS
 */
 func UpdateProcState(pc units.Int24) {
-	var instruction Instruction
+	var instruction proc.Instruction
 
 	if debugUpdateProcState {
 		fmt.Println("PC: ", pc.StringHex())
@@ -45,7 +47,7 @@ func UpdateProcState(pc units.Int24) {
 	// Get next instruction and PC (simulate fetch)
 	nextInstruction, err := GetNextDisassemblyInstruction(false)
 	if err != nil {
-		if err == ErrDisassemblyEmpty() {
+		if err == loader.ErrDisassemblyIncorrect() {
 			return
 		}
 	}
@@ -76,8 +78,7 @@ func StopSim() {
 func ResetSim() {
 	SimExecuteState = ExecuteStopState
 	CurrentProcState = ProcState{}
-	Disassembly = make(map[units.Int24]Instruction)
-	InstructionList = make([]Instruction, 0)
+	loader.ResetDissasembly()
 	base.ResetRegisters()
 	base.ResetMemory()
 }

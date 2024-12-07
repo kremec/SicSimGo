@@ -76,28 +76,27 @@ func SetWord(addressBytes units.Int24, value units.Int24) {
 func GetFloat(addressBytes units.Int24) units.Float48 {
 	address := toAddress(addressBytes)
 
-	// TODO: Check if address range goes beyond memory size
-
-	return units.Float48{
-		memory.Data[address],
-		memory.Data[address+1],
-		memory.Data[address+2],
-		memory.Data[address+3],
-		memory.Data[address+4],
-		memory.Data[address+5],
+	float := units.Float48{}
+	for i := 0; i < 6; i++ {
+		byteAddress := address + uint32(i)
+		if byteAddress > MAX_ADDRESS {
+			panic("Address out of range")
+		}
+		float[i] = memory.Data[byteAddress]
 	}
+
+	return float
 }
 func SetFloat(addressBytes units.Int24, value units.Float48) {
 	address := toAddress(addressBytes)
 
-	// TODO: Check if address range goes beyond memory size
-
-	memory.Data[address] = value[0]
-	memory.Data[address+1] = value[1]
-	memory.Data[address+2] = value[2]
-	memory.Data[address+3] = value[3]
-	memory.Data[address+4] = value[4]
-	memory.Data[address+5] = value[5]
+	for i := 0; i < 6; i++ {
+		byteAddress := address + uint32(i)
+		if byteAddress > MAX_ADDRESS {
+			panic("Address out of range")
+		}
+		memory.Data[byteAddress] = value[i]
+	}
 }
 
 func GetSlice(startAddress units.Int24, endAddress units.Int24) []byte {

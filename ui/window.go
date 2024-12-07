@@ -3,6 +3,7 @@ package ui
 import (
 	_ "embed"
 	"sicsimgo/core"
+	"sicsimgo/core/loader"
 	"sicsimgo/internal"
 	"sicsimgo/ui/components"
 
@@ -43,7 +44,7 @@ func LoadProgramObj(w *app.Window) {
 	core.ResetSim()
 
 	go func() {
-		programName := core.OpenLoadObjFile()
+		programName := loader.OpenLoadObjFile()
 		internal.SetWindowTitle(programName, w)
 	}()
 }
@@ -90,7 +91,7 @@ func DrawWindow(w *app.Window) error {
 		Ratio: -0.2,
 	}
 	vSplitRight := Split{
-		Ratio: -0.2,
+		Ratio: -0.7,
 	}
 
 	for {

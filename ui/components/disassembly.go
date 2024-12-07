@@ -8,6 +8,8 @@ import (
 
 	"sicsimgo/core"
 	"sicsimgo/core/base"
+	"sicsimgo/core/loader"
+	"sicsimgo/core/proc"
 
 	"gioui.org/layout"
 	"gioui.org/unit"
@@ -59,7 +61,7 @@ func InstructionLine(gtx layout.Context, theme *material.Theme, values []string,
 			value := fmt.Sprintf("%s", values[3])
 			label := material.Body1(theme, value)
 			if selected {
-				if core.CurrentProcState.Instruction.IsFormatSIC34() && core.CurrentProcState.Instruction.AbsoluteAddressingMode != core.ImmediateAbsoluteAddressing {
+				if core.CurrentProcState.Instruction.IsFormatSIC34() && core.CurrentProcState.Instruction.AbsoluteAddressingMode != proc.ImmediateAbsoluteAddressing {
 					label.Color = color.NRGBA(colornames.Darkorchid)
 				} else {
 					label.Color = color.NRGBA(colornames.Red)
@@ -88,15 +90,15 @@ func Disassembly(gtx *layout.Context, theme *material.Theme, instructionList *wi
 		}),
 
 		layout.Flexed(1, func(gtx C) D {
-			return material.List(theme, instructionList).Layout(gtx, len(core.InstructionList), func(gtx C, index int) D {
-				instruction := core.InstructionList[index]
+			return material.List(theme, instructionList).Layout(gtx, len(loader.InstructionList), func(gtx C, index int) D {
+				instruction := loader.InstructionList[index]
 				instructionAddress := instruction.InstructionAddress.StringHex()
 				instructionBytes := fmt.Sprintf("%-8s", strings.ToUpper(hex.EncodeToString(instruction.Bytes)))
 				var instructionOperation string
-				if instruction.Directive == core.DirectiveBYTE {
-					instructionOperation = fmt.Sprintf("%-4s", core.DirectiveBYTE)
+				if instruction.Directive == proc.DirectiveBYTE {
+					instructionOperation = fmt.Sprintf("%-4s", proc.DirectiveBYTE)
 				} else {
-					if instruction.Format == core.InstructionFormat4 {
+					if instruction.Format == proc.InstructionFormat4 {
 						instructionOperation = "+"
 					} else {
 						instructionOperation = " "
@@ -104,9 +106,9 @@ func Disassembly(gtx *layout.Context, theme *material.Theme, instructionList *wi
 					instructionOperation += fmt.Sprintf("%-4s", instruction.Opcode.String())
 				}
 				var instructionOperand string
-				if instruction.Directive == core.DirectiveBYTE {
+				if instruction.Directive == proc.DirectiveBYTE {
 					instructionOperand = ""
-				} else if instruction.Format == core.InstructionFormat2 {
+				} else if instruction.Format == proc.InstructionFormat2 {
 					instructionOperand = fmt.Sprintf("%s,%s", instruction.R1.String(), instruction.R2.String())
 				} else if instruction.IsJumpInstruction() || instruction.IsStoreInstruction() {
 					instructionOperand = instruction.Address.StringHex()
