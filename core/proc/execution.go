@@ -254,7 +254,6 @@ func executeFormatSIC34(instruction Instruction) error {
 		base.SetRegisterX(base.GetRegisterX().Add(units.Int24{0x00, 0x00, 0x01}))
 		compareOperation(base.GetRegisterX(), operand)
 	case WD:
-		fmt.Printf("WD -> Operand %s Device %02X\n", operand.StringHex(), operand[len(operand)-1])
 		if err := base.Write(base.Device(operand[len(operand)-1]), base.GetRegisterA()[2]); err != nil {
 			panic(err)
 		}

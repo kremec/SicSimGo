@@ -3,6 +3,7 @@ package ui
 import (
 	_ "embed"
 	"sicsimgo/core"
+	"sicsimgo/core/base"
 	"sicsimgo/core/loader"
 	"sicsimgo/internal"
 	"sicsimgo/ui/components"
@@ -45,6 +46,7 @@ func LoadProgramObj(w *app.Window) {
 
 	go func() {
 		programName := loader.OpenLoadObjFile()
+		core.UpdateProcState(base.GetRegisterPC())
 		internal.SetWindowTitle(programName, w)
 	}()
 }
