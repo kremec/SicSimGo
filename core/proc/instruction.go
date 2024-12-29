@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"fmt"
 	"sicsimgo/core/base"
 	"sicsimgo/core/units"
 )
@@ -240,6 +241,42 @@ func (instruction Instruction) IsFormatSIC34() bool {
 	return instruction.Format == InstructionFormatSIC || instruction.Format == InstructionFormat3 || instruction.Format == InstructionFormat4
 }
 
+func (instruction Instruction) GetInstructionBytes() []byte {
+
+	toInt := func(b bool) byte {
+		if b {
+			return 1
+		} else {
+			return 0
+		}
+	}
+
+	switch instruction.Format {
+	case InstructionFormat1:
+		byte1 := byte(instruction.Opcode)
+		return []byte{byte1}
+	case InstructionFormat2:
+		byte1 := byte(instruction.Opcode)
+		byte2 := byte((instruction.R1&0x0F)<<4 | (instruction.R2 & 0x0F))
+		return []byte{byte1, byte2}
+	case InstructionFormat3:
+		n, i, x, b, p, e := instruction.GenerateNIXBPEBits()
+		byte1 := byte(instruction.Opcode) | (byte(toInt(n)) << 1) | byte(toInt(i))
+		byte2 := byte((toInt(x) << 7) | (toInt(b) << 6) | (toInt(p) << 5) | (toInt(e) << 4) | (instruction.Address[1] & 0x0F))
+		byte3 := byte(instruction.Address[2])
+		return []byte{byte1, byte2, byte3}
+	case InstructionFormat4:
+		n, i, x, b, p, e := instruction.GenerateNIXBPEBits()
+		byte1 := byte(instruction.Opcode) | (byte(toInt(n)) << 1) | byte(toInt(i))
+		byte2 := byte((toInt(x) << 7) | (toInt(b) << 6) | (toInt(p) << 5) | (toInt(e) << 4) | (instruction.Address[0] & 0x0F))
+		byte3 := byte(instruction.Address[1])
+		byte4 := byte(instruction.Address[2])
+		return []byte{byte1, byte2, byte3, byte4}
+	}
+
+	return []byte{}
+}
+
 /*
 STRINGS
 */
@@ -385,4 +422,31 @@ func (opcode Opcode) String() string {
 		return "WD"
 	}
 	return "Unknown"
+}
+
+func (instruction Instruction) String() string {
+	if instruction.Directive == DirectiveBYTE {
+		return fmt.Sprintf("%s : %s\n    Bytes: %X",
+			instruction.InstructionAddress.StringHex(), instruction.Directive,
+			instruction.Bytes)
+	}
+	if instruction.Format == InstructionFormat1 {
+		return fmt.Sprintf("%s : %s",
+			instruction.InstructionAddress.StringHex(), instruction.Opcode.String())
+	}
+	if instruction.Format == InstructionFormat2 {
+		return fmt.Sprintf("%s : %s\n    R1: %s\n    R2: %s",
+			instruction.InstructionAddress.StringHex(), instruction.Opcode.String(),
+			instruction.R1.String(), instruction.R2.String())
+	}
+	if instruction.IsFormatSIC34() {
+		return fmt.Sprintf("%s : %s\n    Bytes: %X\n    Format: %s\n    AbsoluteAddressingMode: %s\n    RelativeAddressingMode: %s\n    Address: %s\n    Operand: %s",
+			instruction.InstructionAddress.StringHex(), instruction.Opcode.String(),
+			instruction.Bytes,
+			instruction.Format.String(),
+			instruction.AbsoluteAddressingMode.String(),
+			instruction.RelativeAddressingMode.String(),
+			instruction.Address.StringHex(), instruction.Operand.StringHex())
+	}
+	return "ERROR PRINTING INSTRUCTION\n"
 }

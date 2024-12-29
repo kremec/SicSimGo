@@ -1,17 +1,10 @@
-package loader
+package bytecode
 
 import (
 	"fmt"
 	"sicsimgo/core/proc"
 	"sicsimgo/core/units"
-	"sort"
 )
-
-/*
-IMPLEMENTATION
-*/
-var Disassembly map[units.Int24]proc.Instruction
-var InstructionList []proc.Instruction
 
 /*
 DEBUG
@@ -21,19 +14,19 @@ const debugGetDisassemblyInstructionsFromTextRecord bool = false
 /*
 OPERATIONS
 */
-func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]proc.Instruction, []byte) {
+func GetInstructionsFromBinary(codeAddress units.Int24, binaryCode []byte) (map[units.Int24]proc.Instruction, []byte) {
 	disassemblyInstructions := make(map[units.Int24]proc.Instruction)
 
 	byteIndex := 0
 	relativeAddress := units.Int24{}
-	for byteIndex < len(code) {
+	for byteIndex < len(binaryCode) {
 		instruction := proc.Instruction{}
 
 		if debugGetDisassemblyInstructionsFromTextRecord {
 			fmt.Printf("Looking at byte index %d\n", byteIndex)
 		}
 
-		byte1 := code[byteIndex]
+		byte1 := binaryCode[byteIndex]
 		opcode := proc.GetOpcode(byte1)
 		instruction.Opcode = opcode
 
@@ -67,10 +60,10 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]proc
 		instructionBytes := []byte{byte1}
 		if instructionFormatFromOpcode == proc.InstructionFormat2 {
 			// Check for incomplete instruction
-			if (byteIndex + 1) >= len(code) {
+			if (byteIndex + 1) >= len(binaryCode) {
 				return disassemblyInstructions, []byte{byte1}
 			}
-			byte2 := code[byteIndex+1]
+			byte2 := binaryCode[byteIndex+1]
 
 			r1, r2 := proc.GetR1R2FromByte(byte2)
 			instruction.R1 = r1
@@ -79,27 +72,27 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]proc
 			instructionBytes = append(instructionBytes, byte2)
 		} else if instructionFormatFromOpcode == proc.InstructionFormatSIC {
 			// Check for incomplete instruction
-			if (byteIndex + 1) >= len(code) {
+			if (byteIndex + 1) >= len(binaryCode) {
 				return disassemblyInstructions, []byte{byte1}
 			}
-			byte2 := code[byteIndex+1]
-			if (byteIndex + 2) >= len(code) {
+			byte2 := binaryCode[byteIndex+1]
+			if (byteIndex + 2) >= len(binaryCode) {
 				return disassemblyInstructions, []byte{byte1, byte2}
 			}
-			byte3 := code[byteIndex+2]
+			byte3 := binaryCode[byteIndex+2]
 
 			instructionBytes = append(instructionBytes, byte2)
 			instructionBytes = append(instructionBytes, byte3)
 		} else if instructionFormatFromOpcode == proc.InstructionFormat34 {
 			// Check for incomplete instruction
-			if (byteIndex + 1) >= len(code) {
+			if (byteIndex + 1) >= len(binaryCode) {
 				return disassemblyInstructions, []byte{byte1}
 			}
-			byte2 := code[byteIndex+1]
-			if (byteIndex + 2) >= len(code) {
+			byte2 := binaryCode[byteIndex+1]
+			if (byteIndex + 2) >= len(binaryCode) {
 				return disassemblyInstructions, []byte{byte1, byte2}
 			}
-			byte3 := code[byteIndex+2]
+			byte3 := binaryCode[byteIndex+2]
 
 			instructionBytes = append(instructionBytes, byte2)
 			instructionBytes = append(instructionBytes, byte3)
@@ -109,10 +102,10 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]proc
 				instruction.Format = proc.InstructionFormat3
 			} else if instructionType == proc.InstructionFormat4 {
 				// Check for incomplete instruction
-				if (byteIndex + 3) >= len(code) {
+				if (byteIndex + 3) >= len(binaryCode) {
 					return disassemblyInstructions, []byte{byte1}
 				}
-				byte4 := code[byteIndex+3]
+				byte4 := binaryCode[byteIndex+3]
 
 				instructionBytes = append(instructionBytes, byte4)
 				instruction.Format = proc.InstructionFormat4
@@ -135,42 +128,4 @@ func GetInstructions(codeAddress units.Int24, code []byte) (map[units.Int24]proc
 	}
 
 	return disassemblyInstructions, []byte{}
-}
-
-func UpdateDisassemblyInstructionAdressOperands() {
-	for address, instruction := range Disassembly {
-		nextInstructionAddress := address
-		for i := 0; i < len(instruction.Bytes); i++ {
-			nextInstructionAddress = nextInstructionAddress.Add(units.Int24{0x00, 0x00, 0x01})
-		}
-		if instruction.IsFormatSIC34() {
-			operand, address, relativeAddressingMode, indexAddressingMode, absoluteAddressingMode := instruction.GetOperandAddress(nextInstructionAddress)
-			instruction.Operand = operand
-			instruction.Address = address
-			instruction.RelativeAddressingMode = relativeAddressingMode
-			instruction.IndexAddressingMode = indexAddressingMode
-			instruction.AbsoluteAddressingMode = absoluteAddressingMode
-		}
-		Disassembly[address] = instruction
-	}
-}
-
-func UpdateDisassemblyInstructionList() {
-	adresses := units.Int24Slice{}
-	for key := range Disassembly {
-		adresses = append(adresses, key)
-	}
-	sort.Sort(adresses)
-
-	instructionList := make([]proc.Instruction, 0, len(Disassembly))
-	for _, key := range adresses {
-		instructionList = append(instructionList, Disassembly[key])
-	}
-
-	InstructionList = instructionList
-}
-
-func ResetDissasembly() {
-	Disassembly = make(map[units.Int24]proc.Instruction)
-	InstructionList = make([]proc.Instruction, 0)
 }

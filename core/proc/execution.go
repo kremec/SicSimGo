@@ -115,7 +115,6 @@ func executeFormat2(instruction Instruction) error {
 		r2Id.SetRegister(r2.Mul(r1))
 	case RMO:
 		r2Id.SetRegister(r1)
-	// TODO: SHIFT OPERATIONS
 	case SHIFTL:
 		shift, err := r1Id.GetRegister()
 		if err != nil {

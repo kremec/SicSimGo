@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sicsimgo/core/base"
 	"sicsimgo/core/loader"
+	"sicsimgo/core/loader/bytecode"
 	"sicsimgo/core/proc"
 	"sicsimgo/core/units"
 )
@@ -65,7 +66,7 @@ func GetNextDisassemblyInstruction(updatePC bool) (proc.Instruction, error) {
 			fmt.Println("Disassembling code from PC to LastInstructionByteAddress:")
 		}
 		codeAfterPC := base.GetSlice(pc, loader.LastInstructionByteAddress)
-		instructions, bytesFromIncompleteInstruction := loader.GetInstructions(pc, codeAfterPC)
+		instructions, bytesFromIncompleteInstruction := bytecode.GetInstructionsFromBinary(pc, codeAfterPC)
 		for address, instruction := range instructions {
 			if debugGetNextDisassemblyInstruction {
 				fmt.Printf("    Address: %s, Format: %s, Bytes: % X, Opcode: %s, Operand: %s\n", address.StringHex(), instruction.Format.String(), instruction.Bytes, instruction.Opcode.String(), instruction.Operand.StringHex())
@@ -85,7 +86,7 @@ func GetNextDisassemblyInstruction(updatePC bool) (proc.Instruction, error) {
 			}
 		}
 
-		loader.UpdateDisassemblyInstructionList()
+		loader.UpdateInstructionList()
 		UpdateProcState(base.GetRegisterPC())
 		return GetNextDisassemblyInstruction(updatePC)
 	}

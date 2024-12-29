@@ -67,7 +67,7 @@ func HandleGlobalEvents(gtx layout.Context, theme *material.Theme, w *app.Window
 				if debugHandleGlobalEvents {
 					fmt.Println("Load program")
 				}
-				LoadProgramObj(w)
+				OpenProgramFile(w)
 			}
 		case "R":
 			if event.Modifiers.Contain(key.ModCtrl) {

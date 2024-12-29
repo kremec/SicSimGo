@@ -88,6 +88,40 @@ func (instruction Instruction) GetNIXBPEBits() (n, i, x, b, p, e bool) {
 	return n, i, x, b, p, e
 }
 
+func (instruction Instruction) GenerateNIXBPEBits() (n, i, x, b, p, e bool) {
+	switch instruction.AbsoluteAddressingMode {
+	case SICAbsoluteAddressing:
+		n, i = false, false
+	case ImmediateAbsoluteAddressing:
+		n, i = false, true
+	case IndirectAbsoluteAddressing:
+		n, i = true, false
+	case DirectAbsoluteAddressing:
+		n, i = true, true
+	}
+
+	if instruction.IndexAddressingMode {
+		x = true
+	}
+
+	switch instruction.RelativeAddressingMode {
+	case DirectRelativeAddressing:
+		b, p = false, false
+	case PCRelativeAddressing:
+		b, p = false, true
+	case BaseRelativeAddressing:
+		b, p = true, false
+	case UnkownRelativeAddressing:
+		b, p = true, true
+	}
+
+	if instruction.Format == InstructionFormat4 {
+		e = true
+	}
+
+	return n, i, x, b, p, e
+}
+
 func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, units.Int24, RelativeAddressingMode, IndexAddressingMode, AbsoluteAddressingMode) {
 
 	if instruction.Format != InstructionFormatSIC && instruction.Format != InstructionFormat3 && instruction.Format != InstructionFormat4 {

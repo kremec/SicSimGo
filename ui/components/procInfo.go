@@ -68,55 +68,31 @@ func ProcInfo(
 	}
 
 	return layout.Flex{
-		Axis: layout.Vertical,
+		Axis:      layout.Vertical,
+		Alignment: layout.Middle,
 	}.Layout(*gtx,
 		layout.Rigid(func(gtx C) D {
-			return material.Body1(theme, "Current instruction bytes:").Layout(gtx)
+			return material.H6(theme, "Next instruction").Layout(gtx)
+		}),
+
+		layout.Rigid(func(gtx C) D {
+			return material.Body1(theme, fmt.Sprintf("Opcode (Operation): %s (%s)", currentInstructionOpcode, core.CurrentProcState.Instruction.Opcode.String())).Layout(gtx)
+		}),
+		layout.Rigid(func(gtx C) D {
+			return material.Body1(theme, "Format: "+core.CurrentProcState.Instruction.Format.String()).Layout(gtx)
+		}),
+		layout.Rigid(func(gtx C) D {
+			if instructionFormat34 {
+				return material.Body1(theme, "nixbpe: "+currentBitsNixbpe).Layout(gtx)
+			} else {
+				return layout.Dimensions{}
+			}
 		}),
 		layout.Rigid(func(gtx C) D {
 			return material.Body1(theme, "Hex: "+currentInstructionHex).Layout(gtx)
 		}),
 		layout.Rigid(func(gtx C) D {
 			return material.Body1(theme, "Bin: "+currentInstructionBin).Layout(gtx)
-		}),
-
-		layout.Rigid(layout.Spacer{Height: 10}.Layout),
-
-		layout.Rigid(func(gtx C) D {
-			return material.Body1(theme, "Current instruction opcode:").Layout(gtx)
-		}),
-		layout.Rigid(func(gtx C) D {
-			return material.Body1(theme, "Opcode: "+currentInstructionOpcode).Layout(gtx)
-		}),
-		layout.Rigid(func(gtx C) D {
-			return material.Body1(theme, "Operation: "+core.CurrentProcState.Instruction.Opcode.String()).Layout(gtx)
-		}),
-		layout.Rigid(func(gtx C) D {
-			return material.Body1(theme, "Instruction format: "+core.CurrentProcState.Instruction.Format.String()).Layout(gtx)
-		}),
-
-		layout.Rigid(layout.Spacer{Height: 0}.Layout),
-
-		layout.Rigid(func(gtx C) D {
-			if instructionFormat34 {
-				return material.Body1(theme, "Bits nixbpe: "+currentBitsNixbpe).Layout(gtx)
-			} else {
-				return layout.Dimensions{}
-			}
-		}),
-		layout.Rigid(func(gtx C) D {
-			if instructionFormat34 {
-				return material.Body1(theme, "Address: "+core.CurrentProcState.Instruction.Address.StringHex()).Layout(gtx)
-			} else {
-				return layout.Dimensions{}
-			}
-		}),
-		layout.Rigid(func(gtx C) D {
-			if instructionFormat34 && !core.CurrentProcState.Instruction.IsJumpInstruction() {
-				return material.Body1(theme, "Operand: "+core.CurrentProcState.Instruction.Operand.StringHex()).Layout(gtx)
-			} else {
-				return layout.Dimensions{}
-			}
 		}),
 	)
 }

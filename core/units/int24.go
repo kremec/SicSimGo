@@ -20,13 +20,15 @@ func (i Int24) IsNegative() bool {
 	return i[0]&0b10000000 != 0
 }
 func (i Int24) ToInt32() int32 {
+	value := int32(i[0])<<16 | int32(i[1])<<8 | int32(i[2])
+	// Sign-extend the 24-bit value to 32-bit
 	if i.IsNegative() {
-		return int32(-1)<<24 | int32(i[0])<<16 | int32(i[1])<<8 | int32(i[2])
+		value |= ^0xFFFFFF // Set the higher bits to 1 for negative numbers
 	}
-	return int32(i[0])<<16 | int32(i[1])<<8 | int32(i[2])
+	return value
 }
 
-func ToInt24(s string) Int24 {
+func StringToInt24(s string) Int24 {
 	if len(s) != WORD_SIZE*2 {
 		return Int24{}
 	}
@@ -41,6 +43,17 @@ func ToInt24(s string) Int24 {
 		result[i] = byte(parsedByte)
 	}
 
+	return result
+}
+
+func IntToInt24(i int) Int24 {
+	var result Int24
+	result[0] = byte(i >> 16)
+	if i < 0 {
+		result[0] = result[0] & 0x7F
+	}
+	result[1] = byte(i >> 8)
+	result[2] = byte(i)
 	return result
 }
 
@@ -129,6 +142,13 @@ func (i Int24) Div(other Int24) Int24 {
 	result[2] = byte(quotient & 0xFF)
 
 	return result
+}
+
+func (i Int24) Abs() Int24 {
+	if i.IsNegative() {
+		return i.Mul(Int24{0xFF, 0xFF, 0xFF})
+	}
+	return i
 }
 
 /*

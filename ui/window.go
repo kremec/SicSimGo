@@ -41,11 +41,12 @@ func loadFont(theme *material.Theme) error {
 	return nil
 }
 
-func LoadProgramObj(w *app.Window) {
+func OpenProgramFile(w *app.Window) {
 	core.ResetSim()
 
 	go func() {
-		programName := loader.OpenLoadObjFile()
+		programName, startPC := loader.OpenAsmObjFile()
+		base.SetRegisterPC(startPC)
 		core.UpdateProcState(base.GetRegisterPC())
 		internal.SetWindowTitle(programName, w)
 	}()
@@ -85,6 +86,9 @@ func DrawWindow(w *app.Window) error {
 	instructionList := widget.List{
 		List: layout.List{Axis: layout.Vertical},
 	}
+	watchList := widget.List{
+		List: layout.List{Axis: layout.Vertical},
+	}
 
 	mainSplit := Split{
 		Ratio: -0.2,
@@ -106,7 +110,7 @@ func DrawWindow(w *app.Window) error {
 			HandleGlobalEvents(gtx, theme, w)
 
 			if LoadProgramButton.Clicked(gtx) {
-				LoadProgramObj(w)
+				OpenProgramFile(w)
 			}
 			if ExecuteStepButton.Clicked(gtx) {
 				ExecuteStep()
@@ -150,7 +154,7 @@ func DrawWindow(w *app.Window) error {
 												Top:    unit.Dp(5),
 												Bottom: unit.Dp(0),
 												Right:  unit.Dp(5),
-												Left:   unit.Dp(0),
+												Left:   unit.Dp(5),
 											}.Layout(gtx, func(gtx C) D {
 												return components.ProcInfo(
 													&gtx, theme,
@@ -180,7 +184,7 @@ func DrawWindow(w *app.Window) error {
 										Right:  unit.Dp(5),
 										Left:   unit.Dp(5),
 									}.Layout(gtx, func(gtx C) D {
-										return material.H6(theme, "Watch").Layout(gtx)
+										return components.Watch(&gtx, theme, &watchList)
 									})
 								},
 								func(gtx C) D {
