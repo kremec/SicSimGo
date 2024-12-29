@@ -22,8 +22,6 @@ type Symbol struct {
 }
 type SymbolTable map[string]Symbol
 
-var LocationCounter units.Int24
-var LineCounter int = 0
 var SyntaxNodes []SyntaxNode
 
 /*
@@ -41,8 +39,9 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 	var symbolTable SymbolTable = make(SymbolTable)
 
 	// First pass
-	LocationCounter = units.Int24{0x00, 0x00, 0x00}
-	LineCounter = 0
+	LocationCounter := units.Int24{0x00, 0x00, 0x00}
+	LineCounter := 0
+	baseEnabled := false
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		LineCounter++
@@ -68,6 +67,13 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 		switch syntaxNode.Mnemonic {
 		case START:
 			programName = syntaxNode.Label
+		case ORG:
+			orgValue := GetAbsoluteOperandAddress(syntaxNode.Operands[0])
+			LocationCounter = orgValue
+		case BASE:
+			baseEnabled = true
+		case NOBASE:
+			baseEnabled = false
 		case RESW:
 			if syntaxNode.Label != "" {
 				symbol := symbolTable[syntaxNode.Label]
@@ -108,30 +114,14 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 				symbolTable[syntaxNode.Label] = symbol
 			}
 			LocationCounter = LocationCounter.Add(units.Int24{0x00, 0x00, 0x01})
-		case EQU:
-			equValue, err := strconv.Atoi(syntaxNode.Operands[0])
-			if err != nil {
-				panic(err) // TODO
-			}
-			if syntaxNode.Label != "" {
-				symbol := symbolTable[syntaxNode.Label]
-				symbol.Name = syntaxNode.Label
-				symbol.Address = units.IntToInt24(equValue)
-				symbol.Data = true
-				symbol.DataLength = 3
-				symbolTable[syntaxNode.Label] = symbol
-			}
-		case ORG:
-			orgValue, err := strconv.Atoi(syntaxNode.Operands[0])
-			if err != nil {
-				panic(err) // TODO
-			}
-			LocationCounter = units.IntToInt24(orgValue)
 		}
 
 		// Instructions
 		if IsMnemonicInstruction(syntaxNode.MnemonicType) {
 			instruction := GetInstructionFromSyntaxNode(*syntaxNode, LocationCounter)
+			if baseEnabled {
+				instruction.RelativeAddressingMode = proc.BaseRelativeAddressing
+			}
 			disassembly[LocationCounter] = instruction
 			if syntaxNode.Label != "" {
 				symbol := symbolTable[syntaxNode.Label]
@@ -181,17 +171,19 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 		// Directives
 		switch syntaxNode.Mnemonic {
 		case EQU:
-			equValue, err := strconv.Atoi(syntaxNode.Operands[0])
-			if err != nil {
-				panic(err) // TODO
+			equValue := GetOperandAddress(syntaxNode.Operands[0], symbolTable)
+			if syntaxNode.Label != "" {
+				symbol := symbolTable[syntaxNode.Label]
+				symbol.Name = syntaxNode.Label
+				symbol.Address = equValue
+				symbol.Data = true
+				symbol.DataLength = 3
+				symbolTable[syntaxNode.Label] = symbol
 			}
-			symbol := symbolTable[syntaxNode.Label]
-			symbol.Address = units.IntToInt24(equValue)
-			symbolTable[syntaxNode.Label] = symbol
 		case WORD:
-			base.SetWord(syntaxNode.LocationCounter, GetOperandAddress(syntaxNode.Operands[0]))
+			base.SetWord(syntaxNode.LocationCounter, GetAbsoluteOperandAddress(syntaxNode.Operands[0]))
 		case BYTE:
-			base.SetByte(syntaxNode.LocationCounter, GetOperandAddress(syntaxNode.Operands[0])[0])
+			base.SetByte(syntaxNode.LocationCounter, GetAbsoluteOperandAddress(syntaxNode.Operands[0])[0])
 		}
 
 		// Instructions
@@ -220,14 +212,15 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 				instruction.AbsoluteAddressingMode = proc.DirectAbsoluteAddressing
 			case MnemonicF3M:
 				pcAfterInstruction := syntaxNode.LocationCounter.Add(units.Int24{0x00, 0x00, 0x03})
-				operandAddress, absoluteAddressingMode, relativeAddressingMode, indexAddressingMode := GetOperandAddressAddressingModes(syntaxNode.Operands[0], pcAfterInstruction, symbolTable)
+				baseEnabled := instruction.RelativeAddressingMode == proc.BaseRelativeAddressing
+				operandAddress, absoluteAddressingMode, relativeAddressingMode, indexAddressingMode := GetOperandAddressAddressingModes(syntaxNode.Operands[0], pcAfterInstruction, baseEnabled, symbolTable)
 				instruction.Address = operandAddress
 				instruction.AbsoluteAddressingMode = absoluteAddressingMode
 				instruction.RelativeAddressingMode = relativeAddressingMode
 				instruction.IndexAddressingMode = indexAddressingMode
 			case MnemonicF4M:
 				pcAfterInstruction := syntaxNode.LocationCounter.Add(units.Int24{0x00, 0x00, 0x04})
-				operandAddress, absoluteAddressingMode, _, indexAddressingMode := GetOperandAddressAddressingModes(syntaxNode.Operands[0], pcAfterInstruction, symbolTable)
+				operandAddress, absoluteAddressingMode, _, indexAddressingMode := GetOperandAddressAddressingModes(syntaxNode.Operands[0], pcAfterInstruction, false, symbolTable)
 				instruction.Address = operandAddress
 				instruction.RelativeAddressingMode = proc.DirectRelativeAddressing
 				instruction.AbsoluteAddressingMode = absoluteAddressingMode
@@ -311,7 +304,7 @@ func GetInstructionFromSyntaxNode(syntaxNode SyntaxNode, locationCounter units.I
 	return instruction
 }
 
-func GetOperandAddressAddressingModes(operand string, pcFromLocationCounter units.Int24, symbolTable SymbolTable) (units.Int24, proc.AbsoluteAddressingMode, proc.RelativeAddressingMode, proc.IndexAddressingMode) {
+func GetOperandAddressAddressingModes(operand string, pcFromLocationCounter units.Int24, baseEnabled bool, symbolTable SymbolTable) (units.Int24, proc.AbsoluteAddressingMode, proc.RelativeAddressingMode, proc.IndexAddressingMode) {
 	// Absolute addressing mode
 	var absoluteAddressingMode proc.AbsoluteAddressingMode
 	if strings.HasPrefix(operand, "#") {
@@ -332,6 +325,53 @@ func GetOperandAddressAddressingModes(operand string, pcFromLocationCounter unit
 	}
 
 	// Operand address
+	operandAddress := GetOperandAddress(operand, symbolTable)
+
+	// Relative addressing
+	var relativeAddressingMode proc.RelativeAddressingMode
+	if baseEnabled {
+		relativeAddressingMode = proc.BaseRelativeAddressing
+	} else {
+		switch absoluteAddressingMode {
+		case proc.ImmediateAbsoluteAddressing: // signed absolute / pc / base
+			// Try Direct-relative addressing
+			if operandAddress.Compare(units.IntToInt24(-2048)) >= 0 && operandAddress.Compare(units.IntToInt24(2047)) < 0 {
+				relativeAddressingMode = proc.DirectRelativeAddressing
+			} else {
+				// Try PC-relative addressing
+				pcRelativeAddress := operandAddress.Sub(pcFromLocationCounter)
+				if pcRelativeAddress.Compare(units.IntToInt24(-2048)) >= 0 && pcRelativeAddress.Compare(units.IntToInt24(2047)) < 0 {
+					relativeAddressingMode = proc.PCRelativeAddressing
+					operandAddress = pcRelativeAddress
+				} else {
+					relativeAddressingMode = proc.BaseRelativeAddressing
+				}
+			}
+		case proc.IndirectAbsoluteAddressing: // pc, base, absolute
+			// Try PC-relative addressing
+			pcRelativeAddress := operandAddress.Sub(pcFromLocationCounter)
+			if pcRelativeAddress.Compare(units.IntToInt24(-2048)) >= 0 && pcRelativeAddress.Compare(units.IntToInt24(2047)) < 0 {
+				relativeAddressingMode = proc.PCRelativeAddressing
+				operandAddress = pcRelativeAddress
+			} else {
+				relativeAddressingMode = proc.BaseRelativeAddressing
+			}
+		case proc.DirectAbsoluteAddressing: // pc / base / absolute / sic absolute
+			// Try PC-relative addressing
+			pcRelativeAddress := operandAddress.Sub(pcFromLocationCounter)
+			if pcRelativeAddress.Compare(units.IntToInt24(-2048)) >= 0 && pcRelativeAddress.Compare(units.IntToInt24(2047)) < 0 {
+				relativeAddressingMode = proc.PCRelativeAddressing
+				operandAddress = pcRelativeAddress
+			} else {
+				relativeAddressingMode = proc.BaseRelativeAddressing
+			}
+		}
+	}
+
+	return operandAddress, absoluteAddressingMode, relativeAddressingMode, indexAddressingMode
+}
+
+func GetOperandAddress(operand string, symbolTable SymbolTable) units.Int24 {
 	var operandAddress units.Int24
 	// Check for relative symbol - label
 	labelOperand, ok := symbolTable[operand]
@@ -339,53 +379,13 @@ func GetOperandAddressAddressingModes(operand string, pcFromLocationCounter unit
 		operandAddress = labelOperand.Address
 	} else {
 		// Check for absolute symbol
-		operandAddress = GetOperandAddress(operand)
+		operandAddress = GetAbsoluteOperandAddress(operand)
 	}
 
-	// Relative addressing
-	var relativeAddressingMode proc.RelativeAddressingMode
-	switch absoluteAddressingMode {
-	case proc.ImmediateAbsoluteAddressing: // signed absolute / pc / base
-		// Try Direct-relative addressing
-		if operandAddress.Compare(units.IntToInt24(-2048)) >= 0 && operandAddress.Compare(units.IntToInt24(2047)) < 0 {
-			relativeAddressingMode = proc.DirectRelativeAddressing
-		} else {
-			// Try PC-relative addressing
-			pcRelativeAddress := operandAddress.Sub(pcFromLocationCounter)
-			if pcRelativeAddress.Compare(units.IntToInt24(-2048)) >= 0 && pcRelativeAddress.Compare(units.IntToInt24(2047)) < 0 {
-				relativeAddressingMode = proc.PCRelativeAddressing
-				operandAddress = pcRelativeAddress
-			} else {
-				// TODO: BASE
-				panic(fmt.Errorf("PC-relative addressing out of range: %s for operand address %s", pcRelativeAddress.StringHex(), operandAddress.StringHex()))
-			}
-		}
-	case proc.IndirectAbsoluteAddressing: // pc, base, absolute
-		// Try PC-relative addressing
-		pcRelativeAddress := operandAddress.Sub(pcFromLocationCounter)
-		if pcRelativeAddress.Compare(units.IntToInt24(-2048)) >= 0 && pcRelativeAddress.Compare(units.IntToInt24(2047)) < 0 {
-			relativeAddressingMode = proc.PCRelativeAddressing
-			operandAddress = pcRelativeAddress
-		} else {
-			// TODO: BASE
-			panic(fmt.Errorf("PC-relative addressing out of range: %s for operand address %s", pcRelativeAddress.StringHex(), operandAddress.StringHex()))
-		}
-	case proc.DirectAbsoluteAddressing: // pc / base / absolute / sic absolute
-		// Try PC-relative addressing
-		pcRelativeAddress := operandAddress.Sub(pcFromLocationCounter)
-		if pcRelativeAddress.Compare(units.IntToInt24(-2048)) >= 0 && pcRelativeAddress.Compare(units.IntToInt24(2047)) < 0 {
-			relativeAddressingMode = proc.PCRelativeAddressing
-			operandAddress = pcRelativeAddress
-		} else {
-			// TODO: BASE
-			panic(fmt.Errorf("PC-relative addressing out of range: %s for operand address %s", pcRelativeAddress.StringHex(), operandAddress.StringHex()))
-		}
-	}
-
-	return operandAddress, absoluteAddressingMode, relativeAddressingMode, indexAddressingMode
+	return operandAddress
 }
 
-func GetOperandAddress(operand string) units.Int24 {
+func GetAbsoluteOperandAddress(operand string) units.Int24 {
 	var operandAddress units.Int24
 	// Check for absolute symbol - dec number
 	intOperand, err := strconv.Atoi(operand)

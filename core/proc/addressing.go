@@ -172,7 +172,7 @@ func (instruction Instruction) GetOperandAddress(pc units.Int24) (units.Int24, u
 	case PCRelativeAddressing:
 		address = address.Add(pc)
 	case BaseRelativeAddressing:
-		address = address.Add(base.GetRegisterB()) // TODO: CHECK IF OK
+		address = address.Add(base.GetRegisterB())
 	}
 
 	if debugGetOperandAddress {
