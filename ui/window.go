@@ -45,8 +45,14 @@ func OpenProgramFile(w *app.Window) {
 	core.ResetSim()
 
 	go func() {
-		programName, startPC := loader.OpenAsmObjFile()
+		programName, startPC, loadedProgramType := loader.OpenAsmObjFile()
+		if loadedProgramType == loader.None {
+			core.ResetSim()
+			internal.ResetWindowTitle(w)
+			return
+		}
 		base.SetRegisterPC(startPC)
+		core.LoadedProgramTypeState = loadedProgramType
 		core.UpdateProcState(base.GetRegisterPC())
 		internal.SetWindowTitle(programName, w)
 	}()
@@ -68,6 +74,16 @@ func Reset(w *app.Window) {
 		core.ResetSim()
 	}()
 }
+func OutputLstFile() {
+	go func() {
+		loader.OutputLstFile()
+	}()
+}
+func OutputObjFile() {
+	go func() {
+		loader.OutputObjFile()
+	}()
+}
 
 func DrawWindow(w *app.Window) error {
 	var ops op.Ops
@@ -79,6 +95,8 @@ func DrawWindow(w *app.Window) error {
 	var ExecuteStepButton widget.Clickable
 	var ExecuteStartStopButton widget.Clickable
 	var ResetSimButton widget.Clickable
+	var OutputObjFileButton widget.Clickable
+	var OutputLstFileButton widget.Clickable
 
 	memoryList := widget.List{
 		List: layout.List{Axis: layout.Vertical},
@@ -121,13 +139,19 @@ func DrawWindow(w *app.Window) error {
 			if ResetSimButton.Clicked(gtx) {
 				Reset(w)
 			}
+			if OutputLstFileButton.Clicked(gtx) {
+				OutputLstFile()
+			}
+			if OutputObjFileButton.Clicked(gtx) {
+				OutputObjFile()
+			}
 
 			layout.Flex{
 				Axis:      layout.Vertical,
 				Alignment: layout.Middle,
 			}.Layout(gtx,
 				layout.Rigid(func(gtx C) D {
-					return components.Toolbar(gtx, theme, &LoadProgramButton, &ExecuteStepButton, &ExecuteStartStopButton, &ResetSimButton)
+					return components.Toolbar(gtx, theme, &LoadProgramButton, &ExecuteStepButton, &ExecuteStartStopButton, &ResetSimButton, &OutputObjFileButton, &OutputLstFileButton)
 				}),
 
 				layout.Flexed(1, func(gtx C) D {

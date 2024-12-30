@@ -12,17 +12,16 @@ import (
 )
 
 /*
-IMPLEMENTATIONS
+DEFINITIONS
 */
 type Symbol struct {
 	Name       string
 	Address    units.Int24
 	Data       bool
 	DataLength int
+	Value      []byte
 }
 type SymbolTable map[string]Symbol
-
-var SyntaxNodes []SyntaxNode
 
 /*
 DEBUG
@@ -32,11 +31,12 @@ var debugParseProgram bool = false
 /*
 OPERATIONS
 */
-func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instruction, SymbolTable) {
+func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instruction, SymbolTable, []SyntaxNode) {
 	var programName string
 	var endPC units.Int24
 	var disassembly map[units.Int24]proc.Instruction = make(map[units.Int24]proc.Instruction)
 	var symbolTable SymbolTable = make(SymbolTable)
+	var syntaxNodes []SyntaxNode
 
 	// First pass
 	LocationCounter := units.Int24{0x00, 0x00, 0x00}
@@ -54,8 +54,8 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 		syntaxNode := getSyntaxNode(line, LineCounter)
 		if syntaxNode == nil {
 			continue
-		} else if syntaxNode.Mnemonic == "" && syntaxNode.Comment != "" {
-			SyntaxNodes = append(SyntaxNodes, *syntaxNode)
+		} else if syntaxNode.IsComment {
+			syntaxNodes = append(syntaxNodes, *syntaxNode)
 			continue
 		} else if syntaxNode.Mnemonic == "" {
 			continue
@@ -142,11 +142,11 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 			}
 		}
 
-		SyntaxNodes = append(SyntaxNodes, *syntaxNode)
+		syntaxNodes = append(syntaxNodes, *syntaxNode)
 	}
 
 	if debugParseProgram {
-		for _, syntaxNode := range SyntaxNodes {
+		for _, syntaxNode := range syntaxNodes {
 			fmt.Println(syntaxNode.String())
 			fmt.Println()
 		}
@@ -162,7 +162,7 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 	}
 
 	// Second pass
-	for _, syntaxNode := range SyntaxNodes {
+	for _, syntaxNode := range syntaxNodes {
 
 		if syntaxNode.IsComment {
 			continue
@@ -181,9 +181,17 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 				symbolTable[syntaxNode.Label] = symbol
 			}
 		case WORD:
-			base.SetWord(syntaxNode.LocationCounter, GetAbsoluteOperandAddress(syntaxNode.Operands[0]))
+			symbol := symbolTable[syntaxNode.Label]
+			absoluteOperandAddress := GetAbsoluteOperandAddress(syntaxNode.Operands[0])
+			symbol.Value = []byte{absoluteOperandAddress[0], absoluteOperandAddress[1], absoluteOperandAddress[2]}
+			symbolTable[syntaxNode.Label] = symbol
+			base.SetWord(syntaxNode.LocationCounter, absoluteOperandAddress)
 		case BYTE:
-			base.SetByte(syntaxNode.LocationCounter, GetAbsoluteOperandAddress(syntaxNode.Operands[0])[0])
+			symbol := symbolTable[syntaxNode.Label]
+			absoluteOperandAddress := GetAbsoluteOperandAddress(syntaxNode.Operands[0])
+			symbol.Value = []byte{absoluteOperandAddress[0]}
+			symbolTable[syntaxNode.Label] = symbol
+			base.SetByte(syntaxNode.LocationCounter, absoluteOperandAddress[0])
 		}
 
 		// Instructions
@@ -239,7 +247,7 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 		}
 	}
 
-	return programName, endPC, disassembly, symbolTable
+	return programName, endPC, disassembly, symbolTable, syntaxNodes
 }
 
 func getSyntaxNode(line string, lineNumber int) *SyntaxNode {

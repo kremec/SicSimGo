@@ -26,6 +26,7 @@ const (
 /*
 IMPLEMENTATION
 */
+var LoadedProgramTypeState loader.LoadedProgramType = loader.None
 var SimExecuteState ExecuteState = ExecuteStopState
 var CurrentProcState ProcState = ProcState{}
 
