@@ -39,6 +39,9 @@ var SymbolTableList []assembly.Symbol
 
 var SyntaxNodes []assembly.SyntaxNode
 
+var ProgramName string
+var StartPC units.Int24
+
 /*
 OPERATIONS
 */
@@ -54,17 +57,15 @@ func OpenAsmObjFile() (string, units.Int24, LoadedProgramType) {
 	}
 	defer file.Close()
 
-	var programName string
-	var startPC units.Int24
 	var loadedProgramType LoadedProgramType
 
 	switch filepath.Ext(fileName) {
 	case ".asm":
 		loadedProgramType = Assembly
-		programName, startPC, Disassembly, SymbolTable, SyntaxNodes = assembly.LoadProgram(file)
+		ProgramName, StartPC, Disassembly, SymbolTable, SyntaxNodes = assembly.LoadProgram(file)
 	case ".obj":
 		loadedProgramType = Bytecode
-		programName, startPC, Disassembly, LastInstructionByteAddress = bytecode.LoadProgram(file)
+		ProgramName, StartPC, Disassembly, LastInstructionByteAddress = bytecode.LoadProgram(file)
 	default:
 		return internal.DefaultWindowTitle, units.Int24{}, None
 	}
@@ -73,7 +74,7 @@ func OpenAsmObjFile() (string, units.Int24, LoadedProgramType) {
 	UpdateInstructionList()
 	UpdateSymbolTableList()
 
-	return programName, startPC, loadedProgramType
+	return ProgramName, StartPC, loadedProgramType
 }
 
 func UpdateDisassemblyInstructionAddressOperands() {
@@ -133,7 +134,7 @@ func ResetDissasembly() {
 func OutputLstFile() {
 	fileName, err := dialog.File().Filter("List file", "lst").Title("Save list file").Save()
 	if err != nil {
-		panic("No file opened")
+		return
 	}
 	if !strings.HasSuffix(fileName, ".lst") {
 		fileName += ".lst"
@@ -141,7 +142,7 @@ func OutputLstFile() {
 
 	file, err := os.Create(fileName)
 	if err != nil {
-		panic("Cannot open file")
+		return
 	}
 	defer file.Close()
 
@@ -195,5 +196,90 @@ func OutputLstFile() {
 }
 
 func OutputObjFile() {
+	fileName, err := dialog.File().Filter("Object file", "obj").Title("Save object file").Save()
+	if err != nil {
+		return
+	}
+	if !strings.HasSuffix(fileName, ".obj") {
+		fileName += ".obj"
+	}
 
+	file, err := os.Create(fileName)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	// Generate & analyze text (T) sections
+	var textSections []string
+	var totalByteCount int
+
+	var bytesBuffer []byte
+	var lastByteAddress units.Int24 = InstructionList[0].InstructionAddress
+	const maxBufferLength = 30
+	for _, syntaxNode := range SyntaxNodes {
+
+		goToNextTRecord := false
+		// Determine bytes to add
+		var bytesToAdd []byte
+		if syntaxNode.Mnemonic == assembly.BYTE {
+			absoluteOperandAddress := assembly.GetAbsoluteOperandAddress(syntaxNode.Operands[0])
+			bytesToAdd = []byte{absoluteOperandAddress[0]}
+		} else if syntaxNode.Mnemonic == assembly.WORD {
+			absoluteOperandAddress := assembly.GetAbsoluteOperandAddress(syntaxNode.Operands[0])
+			bytesToAdd = []byte{absoluteOperandAddress[0], absoluteOperandAddress[1], absoluteOperandAddress[2]}
+		} else if syntaxNode.Mnemonic == assembly.RESB {
+			goToNextTRecord = true
+			lastByteAddress = lastByteAddress.Add(units.IntToInt24(1))
+		} else if syntaxNode.Mnemonic == assembly.RESW {
+			goToNextTRecord = true
+			lastByteAddress = lastByteAddress.Add(units.IntToInt24(3))
+		} else if assembly.IsMnemonicInstruction(syntaxNode.MnemonicType) {
+			instruction := Disassembly[syntaxNode.LocationCounter]
+			bytesToAdd = instruction.Bytes
+		}
+
+		if goToNextTRecord {
+			textRecord := fmt.Sprintf("T%X%02X%X\n", lastByteAddress, byte(len(bytesBuffer)), bytesBuffer)
+			textSections = append(textSections, textRecord)
+			totalByteCount += len(bytesBuffer)
+
+			lastByteAddress = lastByteAddress.Add(units.IntToInt24(len(bytesBuffer)))
+			bytesBuffer = []byte{}
+		} else if len(bytesBuffer)+len(bytesToAdd) > maxBufferLength {
+			appendBytes := bytesToAdd[:maxBufferLength-len(bytesBuffer)]
+			leftOverBytes := bytesToAdd[maxBufferLength-len(bytesBuffer):]
+			bytesBuffer = append(bytesBuffer, appendBytes...)
+
+			textRecord := fmt.Sprintf("T%X%02X%X\n", lastByteAddress, byte(len(bytesBuffer)), bytesBuffer)
+			textSections = append(textSections, textRecord)
+			totalByteCount += len(bytesBuffer)
+
+			lastByteAddress = lastByteAddress.Add(units.IntToInt24(len(bytesBuffer)))
+			bytesBuffer = leftOverBytes
+		} else {
+			bytesBuffer = append(bytesBuffer, bytesToAdd...)
+		}
+	}
+	if len(bytesBuffer) > 0 {
+		textRecord := fmt.Sprintf("T%X%02X%X\n", lastByteAddress, byte(len(bytesBuffer)), bytesBuffer)
+		textSections = append(textSections, textRecord)
+		totalByteCount += len(bytesBuffer)
+	}
+
+	// Write header (H) section
+	headerRecord := fmt.Sprintf("H%-6s%X%X\n", ProgramName, StartPC, units.IntToInt24(totalByteCount))
+	file.WriteString(headerRecord)
+	fmt.Println(headerRecord)
+
+	// Write text (T) sections
+	for _, textSection := range textSections {
+		file.WriteString(textSection)
+		fmt.Println(textSection)
+	}
+
+	// Write end (E) section
+	endRecord := fmt.Sprintf("E%X\n", LastInstructionByteAddress)
+	file.WriteString(endRecord)
+	fmt.Println(endRecord)
 }

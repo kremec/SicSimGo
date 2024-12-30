@@ -181,16 +181,20 @@ func LoadProgram(file *os.File) (string, units.Int24, map[units.Int24]proc.Instr
 				symbolTable[syntaxNode.Label] = symbol
 			}
 		case WORD:
-			symbol := symbolTable[syntaxNode.Label]
 			absoluteOperandAddress := GetAbsoluteOperandAddress(syntaxNode.Operands[0])
-			symbol.Value = []byte{absoluteOperandAddress[0], absoluteOperandAddress[1], absoluteOperandAddress[2]}
-			symbolTable[syntaxNode.Label] = symbol
+			if syntaxNode.Label != "" {
+				symbol := symbolTable[syntaxNode.Label]
+				symbol.Value = []byte{absoluteOperandAddress[0], absoluteOperandAddress[1], absoluteOperandAddress[2]}
+				symbolTable[syntaxNode.Label] = symbol
+			}
 			base.SetWord(syntaxNode.LocationCounter, absoluteOperandAddress)
 		case BYTE:
-			symbol := symbolTable[syntaxNode.Label]
 			absoluteOperandAddress := GetAbsoluteOperandAddress(syntaxNode.Operands[0])
-			symbol.Value = []byte{absoluteOperandAddress[0]}
-			symbolTable[syntaxNode.Label] = symbol
+			if syntaxNode.Label != "" {
+				symbol := symbolTable[syntaxNode.Label]
+				symbol.Value = []byte{absoluteOperandAddress[0]}
+				symbolTable[syntaxNode.Label] = symbol
+			}
 			base.SetByte(syntaxNode.LocationCounter, absoluteOperandAddress[0])
 		}
 
