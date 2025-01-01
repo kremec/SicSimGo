@@ -210,8 +210,9 @@ func OutputObjFile() {
 	}
 	defer file.Close()
 
-	// Generate & analyze text (T) sections
+	// Generate text (T) & modification (M) sections
 	var textSections []string
+	var modificationSections []string
 	var totalByteCount int
 
 	var bytesBuffer []byte
@@ -237,6 +238,18 @@ func OutputObjFile() {
 		} else if assembly.IsMnemonicInstruction(syntaxNode.MnemonicType) {
 			instruction := Disassembly[syntaxNode.LocationCounter]
 			bytesToAdd = instruction.Bytes
+
+			if instruction.RelativeAddressingMode == proc.DirectRelativeAddressing {
+				modificationOffset := lastByteAddress.Add(units.IntToInt24(len(bytesBuffer) + 1))
+				switch instruction.Format {
+				case proc.InstructionFormatSIC | proc.InstructionFormat3:
+					modificationRecord := fmt.Sprintf("M%X%02X\n", modificationOffset, 0x03)
+					modificationSections = append(modificationSections, modificationRecord)
+				case proc.InstructionFormat4:
+					modificationRecord := fmt.Sprintf("M%X%02X\n", modificationOffset, 0x05)
+					modificationSections = append(modificationSections, modificationRecord)
+				}
+			}
 		}
 
 		if goToNextTRecord {
@@ -276,6 +289,12 @@ func OutputObjFile() {
 	for _, textSection := range textSections {
 		file.WriteString(textSection)
 		fmt.Println(textSection)
+	}
+
+	// Write modification (M) sections
+	for _, modificationSection := range modificationSections {
+		file.WriteString(modificationSection)
+		fmt.Println(modificationSection)
 	}
 
 	// Write end (E) section
